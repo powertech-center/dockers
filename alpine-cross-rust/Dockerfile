@@ -2,9 +2,9 @@
 # Rust development and cross-compilation environment
 # Uses cargo-zigbuild for Linux/macOS, inherited xwin+clang-cl for Windows MSVC
 #
-# Image: ghcr.io/powertech-center/alpine-rust
+# Image: ghcr.io/powertech-center/alpine-cross-rust
 
-FROM ghcr.io/powertech-center/alpine-crossplatform:latest
+FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --default-toolchain stable

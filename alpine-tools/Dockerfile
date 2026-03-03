@@ -3,7 +3,7 @@
 #
 # Image: ghcr.io/powertech-center/alpine-tools
 
-FROM alpine:3.19
+FROM alpine:latest
 
 RUN apk add --no-cache \
     bash \

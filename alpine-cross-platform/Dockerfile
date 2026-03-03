@@ -8,7 +8,7 @@
 #   xwin      — Windows MSVC SDK and CRT (for Rust MSVC targets)
 #   clang-cl  — clang in MSVC-compatible mode
 #
-# Image: ghcr.io/powertech-center/alpine-crossplatform
+# Image: ghcr.io/powertech-center/alpine-cross-platform
 
 FROM ghcr.io/powertech-center/alpine-dev:latest
 

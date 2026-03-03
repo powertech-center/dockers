@@ -6,13 +6,13 @@ All images are published to `ghcr.io/powertech-center/`.
 ## Image Hierarchy
 
 ```
-alpine:3.19
+alpine:latest
   └── alpine-tools              base utilities
         └── alpine-dev          build tools & scripting
-              └── alpine-crossplatform  Zig, macOS SDK, Windows MSVC SDK
-                    ├── alpine-clang    LLVM/Clang toolchain
-                    ├── alpine-go       Go toolchain
-                    └── alpine-rust     Rust toolchain
+              └── alpine-cross-platform  Zig, macOS SDK, Windows MSVC SDK
+                    ├── alpine-cross-clang    LLVM/Clang toolchain
+                    ├── alpine-cross-go       Go toolchain
+                    └── alpine-cross-rust     Rust toolchain
 ```
 
 ## Images
@@ -35,14 +35,14 @@ Native development tools and scripting environments.
 ghcr.io/powertech-center/alpine-dev:latest
 ```
 
-Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, PowerShell (pwsh).
+Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, pwsh, musl from git master (provides `posix_getdents` for Claude Code), user `dev`.
 
-### alpine-crossplatform
+### alpine-cross-platform
 
 Cross-compilation for 3 OS (Linux, macOS, Windows) × 2 architectures (x64, ARM64).
 
 ```
-ghcr.io/powertech-center/alpine-crossplatform:latest
+ghcr.io/powertech-center/alpine-cross-platform:latest
 ```
 
 Adds: Zig, clang, macOS SDK, Windows MSVC SDK (xwin), clang-cl, zig-cc wrapper scripts.
@@ -66,22 +66,22 @@ Adds: Zig, clang, macOS SDK, Windows MSVC SDK (xwin), clang-cl, zig-cc wrapper s
 | MSVC-compatible compiler | `clang-cl` |
 | Environment variable | `XWIN_CACHE_DIR=/xwin` |
 
-### alpine-clang
+### alpine-cross-clang
 
 LLVM/Clang development environment.
 
 ```
-ghcr.io/powertech-center/alpine-clang:latest
+ghcr.io/powertech-center/alpine-cross-clang:latest
 ```
 
-Adds: clang-dev, lld, llvm-dev, llvm-static, compiler-rt (clang inherited from alpine-crossplatform).
+Adds: clang-dev, lld, llvm-dev, llvm-static, compiler-rt (clang inherited from alpine-cross-platform).
 
-### alpine-go
+### alpine-cross-go
 
 Go development and cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-go:latest
+ghcr.io/powertech-center/alpine-cross-go:latest
 ```
 
 Adds: Go toolchain. Use zig-cc wrappers as `CC` for CGo cross-compilation.
@@ -92,12 +92,12 @@ Example (CGo cross-compilation for macOS ARM64):
 CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 CC=zig-cc-aarch64-macos go build ./cmd/myapp
 ```
 
-### alpine-rust
+### alpine-cross-rust
 
 Rust development and cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-rust:latest
+ghcr.io/powertech-center/alpine-cross-rust:latest
 ```
 
 Adds: Rust (via rustup), cargo-zigbuild, cargo-audit, rustfmt, clippy, llvm-lib (MSVC archiver).
@@ -122,7 +122,7 @@ cargo build --release --target x86_64-pc-windows-msvc
 make all
 
 # Build a specific image (dependencies are resolved automatically)
-make alpine-go
+make alpine-cross-go
 
 # Push all images to ghcr.io
 make push
@@ -136,7 +136,7 @@ make clean
 Inherit from the appropriate language image and add project-specific dependencies:
 
 ```dockerfile
-FROM ghcr.io/powertech-center/alpine-go:latest
+FROM ghcr.io/powertech-center/alpine-cross-go:latest
 
 # Project-specific dev libraries
 RUN apk add --no-cache alsa-lib-dev libx11-dev gtk+3.0-dev
@@ -146,15 +146,16 @@ WORKDIR /workspace
 
 ## Versions
 
-| Component | Version |
-|-----------|---------|
-| Alpine | 3.19 |
-| Zig | 0.15.2 |
-| macOS SDK | 14.5 |
-| Go | 1.25.5 |
-| PowerShell | 7.5.4 |
-| Rust | stable (via rustup) |
-| xwin | 0.8.0 |
+| Component | Version | How |
+|-----------|---------|-----|
+| Alpine | latest | `alpine:latest` |
+| Zig | 0.15.2 | fixed (`ARG ZIG_VERSION`) |
+| macOS SDK | 14.5 | fixed (`ARG MACOSX_SDK_VERSION`) |
+| xwin | 0.8.0 | fixed (`ARG XWIN_VERSION`) |
+| PowerShell | latest stable | auto via GitHub API |
+| Go | latest stable | auto via `go.dev/VERSION` |
+| Rust | latest stable | auto via rustup |
+| LLVM/Clang | latest | via `apk` (Alpine packages) |
 
 ## License
 
