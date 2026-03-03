@@ -1,12 +1,12 @@
 # PowerTech Alpine Clang
 # LLVM/Clang development and cross-compilation environment
-# Inherits Zig cross-compilation for all 6 targets from alpine-crossplatform
+# Inherits Zig cross-compilation for all 6 targets from alpine-cross-platform
 #
 # Image: ghcr.io/powertech-center/alpine-cross-clang
 
 FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
-# clang already inherited from alpine-crossplatform
+# clang already inherited from alpine-cross-platform
 RUN apk add --no-cache \
     clang-dev \
     lld \
