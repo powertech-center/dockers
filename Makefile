@@ -5,6 +5,9 @@
 #   alpine:latest
 #     └── alpine-tools          (wget, curl, git, zip, 7z, jq...)
 #           └── alpine-dev      (make, cmake, gcc, musl git master, dev user)
+#                 ├── alpine-clang      (LLVM/Clang, native host)
+#                 ├── alpine-go         (Go toolchain, native host)
+#                 ├── alpine-rust       (Rust toolchain, native host)
 #                 └── alpine-cross-platform  (zig-cc wrappers, macOS SDK)
 #                       ├── alpine-cross-clang    (LLVM/Clang toolchain)
 #                       ├── alpine-cross-go       (Go toolchain)
@@ -12,11 +15,11 @@
 
 REGISTRY := ghcr.io/powertech-center
 
-IMAGES := alpine-tools alpine-dev alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
+IMAGES := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
 
 .PHONY: all clean push $(IMAGES)
 
-all: alpine-cross-clang alpine-cross-go alpine-cross-rust
+all: alpine-clang alpine-go alpine-rust alpine-cross-clang alpine-cross-go alpine-cross-rust
 
 # === Build targets (with dependency chain) ===
 
@@ -25,6 +28,15 @@ alpine-tools:
 
 alpine-dev: alpine-tools
 	docker build -t $(REGISTRY)/alpine-dev:latest alpine-dev/
+
+alpine-clang: alpine-dev
+	docker build -t $(REGISTRY)/alpine-clang:latest alpine-clang/
+
+alpine-go: alpine-dev
+	docker build -t $(REGISTRY)/alpine-go:latest alpine-go/
+
+alpine-rust: alpine-dev
+	docker build -t $(REGISTRY)/alpine-rust:latest alpine-rust/
 
 alpine-cross-platform: alpine-dev
 	docker build -t $(REGISTRY)/alpine-cross-platform:latest alpine-cross-platform/

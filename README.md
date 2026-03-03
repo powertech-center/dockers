@@ -9,10 +9,13 @@ All images are published to `ghcr.io/powertech-center/`.
 alpine:latest
   └── alpine-tools              base utilities
         └── alpine-dev          build tools & scripting
+              ├── alpine-clang      LLVM/Clang (native host)
+              ├── alpine-go         Go toolchain (native host)
+              ├── alpine-rust       Rust toolchain (native host)
               └── alpine-cross-platform  Zig, macOS SDK, Windows MSVC SDK
-                    ├── alpine-cross-clang    LLVM/Clang toolchain
-                    ├── alpine-cross-go       Go toolchain
-                    └── alpine-cross-rust     Rust toolchain
+                    ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
+                    ├── alpine-cross-go       Go toolchain (cross)
+                    └── alpine-cross-rust     Rust toolchain (cross)
 ```
 
 ## Images
@@ -36,6 +39,36 @@ ghcr.io/powertech-center/alpine-dev:latest
 ```
 
 Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, pwsh, musl from git master (provides `posix_getdents` for Claude Code), user `dev`.
+
+### alpine-clang
+
+Native LLVM/Clang development environment (host compilation only).
+
+```
+ghcr.io/powertech-center/alpine-clang:latest
+```
+
+Adds: clang, clang-dev, lld, llvm-dev, llvm-static, compiler-rt.
+
+### alpine-go
+
+Native Go development environment (host compilation only).
+
+```
+ghcr.io/powertech-center/alpine-go:latest
+```
+
+Adds: Go toolchain (latest stable). `CGO_ENABLED=1` works out of the box via the gcc inherited from alpine-dev.
+
+### alpine-rust
+
+Native Rust development environment (host compilation only).
+
+```
+ghcr.io/powertech-center/alpine-rust:latest
+```
+
+Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit. No cross-compilation targets or Zig dependency.
 
 ### alpine-cross-platform
 
@@ -118,10 +151,11 @@ cargo build --release --target x86_64-pc-windows-msvc
 ## Building
 
 ```bash
-# Build all images
+# Build all images (native + cross)
 make all
 
 # Build a specific image (dependencies are resolved automatically)
+make alpine-go
 make alpine-cross-go
 
 # Push all images to ghcr.io
