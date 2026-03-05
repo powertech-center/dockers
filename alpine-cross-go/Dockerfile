@@ -1,6 +1,9 @@
 # PowerTech Alpine Go
 # Go development and cross-compilation environment
-# Inherits Zig cross-compilation for all 6 targets from alpine-cross-platform
+# Inherits clang cross-compilation for all 6 targets from alpine-cross-platform
+#
+# Smart compiler wrappers auto-inject -fuse-ld=lld when linking is detected.
+# No CGO_LDFLAGS needed — just set CC=clang-<arch>-<os>.
 #
 # Image: ghcr.io/powertech-center/alpine-cross-go
 
@@ -14,12 +17,19 @@ RUN GO_VERSION=$(wget -qO- https://go.dev/VERSION?m=text | head -1 | sed 's/^go/
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
-# CGo cross-compilation: set CC manually per build, e.g.:
-#   GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=zig-cc-aarch64-linux-musl go build
-#   GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=zig-cc-x86_64-macos go build
-# Available zig-cc wrappers (from alpine-cross-platform):
-#   zig-cc-x86_64-linux-musl, zig-cc-aarch64-linux-musl
-#   zig-cc-x86_64-macos, zig-cc-aarch64-macos
-#   zig-cc-x86_64-windows-gnu, zig-cc-aarch64-windows-gnu
+# CGo cross-compilation: set CC per build. Smart wrappers handle everything else.
+# Available clang wrappers (from alpine-cross-platform):
+#
+#   Linux:
+#     GOOS=linux GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-linux-musl go build
+#     GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-linux-musl go build
+#
+#   macOS:
+#     GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-apple-darwin go build
+#     GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-apple-darwin go build
+#
+#   Windows GNU (GCC-compatible driver, MSVC sysroot, no MinGW DLLs):
+#     GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-windows-gnu go build
+#     GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-windows-gnu go build
 
 CMD ["/bin/sh"]

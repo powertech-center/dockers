@@ -8,59 +8,60 @@
 #                 ├── alpine-clang      (LLVM/Clang, native host)
 #                 ├── alpine-go         (Go toolchain, native host)
 #                 ├── alpine-rust       (Rust toolchain, native host)
-#                 └── alpine-cross-platform  (zig-cc wrappers, macOS SDK)
-#                       ├── alpine-cross-clang    (LLVM/Clang toolchain)
+#                 └── alpine-cross-platform  (clang wrappers, macOS SDK, xwin)
+#                       ├── alpine-cross-clang    (LLVM/Clang toolchain + dev libs)
 #                       ├── alpine-cross-go       (Go toolchain)
-#                       └── alpine-cross-rust     (Rust + cargo-zigbuild)
+#                       └── alpine-cross-rust     (Rust + cargo-audit)
 
 REGISTRY := ghcr.io/powertech-center
 
-IMAGES := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
+IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
+BUILD_TARGETS  := $(IMAGES)
+CLEAN_TARGETS  := $(addprefix clean-,$(IMAGES))
+PUSH_TARGETS   := $(addprefix push-,$(IMAGES))
 
-.PHONY: all clean push $(IMAGES)
-
-all: alpine-clang alpine-go alpine-rust alpine-cross-clang alpine-cross-go alpine-cross-rust
+.PHONY: $(BUILD_TARGETS) all $(CLEAN_TARGETS) clean $(PUSH_TARGETS) push
 
 # === Build targets (with dependency chain) ===
 
-alpine-tools:
-	docker build -t $(REGISTRY)/alpine-tools:latest alpine-tools/
+all: $(BUILD_TARGETS)
 
-alpine-dev: alpine-tools
-	docker build -t $(REGISTRY)/alpine-dev:latest alpine-dev/
+define BUILD_template
+$(1): $(2)
+	@echo "Building $(REGISTRY)/$(1):latest..."
+	docker build -t $(REGISTRY)/$(1):latest $(1)/
+endef
 
-alpine-clang: alpine-dev
-	docker build -t $(REGISTRY)/alpine-clang:latest alpine-clang/
+$(eval $(call BUILD_template,alpine-tools,))
+$(eval $(call BUILD_template,alpine-dev,alpine-tools))
+$(eval $(call BUILD_template,alpine-clang,alpine-dev))
+$(eval $(call BUILD_template,alpine-go,alpine-dev))
+$(eval $(call BUILD_template,alpine-rust,alpine-dev))
+$(eval $(call BUILD_template,alpine-cross-platform,alpine-dev))
+$(eval $(call BUILD_template,alpine-cross-clang,alpine-cross-platform))
+$(eval $(call BUILD_template,alpine-cross-go,alpine-cross-platform))
+$(eval $(call BUILD_template,alpine-cross-rust,alpine-cross-platform))
 
-alpine-go: alpine-dev
-	docker build -t $(REGISTRY)/alpine-go:latest alpine-go/
+# === Clean targets per image ===
 
-alpine-rust: alpine-dev
-	docker build -t $(REGISTRY)/alpine-rust:latest alpine-rust/
+clean: $(CLEAN_TARGETS)
 
-alpine-cross-platform: alpine-dev
-	docker build -t $(REGISTRY)/alpine-cross-platform:latest alpine-cross-platform/
+define CLEAN_template
+clean-$(1):
+	@echo "Removing $(REGISTRY)/$(1):latest..."
+	docker rmi $(REGISTRY)/$(1):latest 2>/dev/null || true
+endef
 
-alpine-cross-clang: alpine-cross-platform
-	docker build -t $(REGISTRY)/alpine-cross-clang:latest alpine-cross-clang/
+$(foreach img,$(IMAGES),$(eval $(call CLEAN_template,$(img))))
 
-alpine-cross-go: alpine-cross-platform
-	docker build -t $(REGISTRY)/alpine-cross-go:latest alpine-cross-go/
+# === Push targets per image ===
 
-alpine-cross-rust: alpine-cross-platform
-	docker build -t $(REGISTRY)/alpine-cross-rust:latest alpine-cross-rust/
+push: $(PUSH_TARGETS)
 
-# === Push all images to registry ===
+define PUSH_template
+push-$(1):
+	@echo "Pushing $(REGISTRY)/$(1):latest..."
+	docker push $(REGISTRY)/$(1):latest
+endef
 
-push:
-	@for img in $(IMAGES); do \
-		echo "Pushing $(REGISTRY)/$$img:latest..."; \
-		docker push $(REGISTRY)/$$img:latest; \
-	done
-
-# === Clean local images ===
-
-clean:
-	@for img in $(IMAGES); do \
-		docker rmi $(REGISTRY)/$$img:latest 2>/dev/null || true; \
-	done
+$(foreach img,$(IMAGES),$(eval $(call PUSH_template,$(img))))

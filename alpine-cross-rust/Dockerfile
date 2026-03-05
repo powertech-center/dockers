@@ -1,6 +1,8 @@
 # PowerTech Alpine Rust
 # Rust development and cross-compilation environment
-# Uses cargo-zigbuild for Linux/macOS, inherited xwin+clang-cl for Windows MSVC
+# All 6 targets use cargo build with clang cross-compilers (from alpine-cross-platform):
+#   Linux/macOS: clang-<arch>-<os> wrappers + lld-<arch>-<os> linkers
+#   Windows MSVC: clang-<arch>-windows-msvc (clang --driver-mode=cl) + lld-link-<arch>-windows-msvc
 #
 # Image: ghcr.io/powertech-center/alpine-cross-rust
 
@@ -20,64 +22,62 @@ RUN rustup component add rustfmt clippy llvm-tools && \
     x86_64-apple-darwin \
     aarch64-apple-darwin
 
-RUN cargo install cargo-zigbuild --locked && \
-    cargo install cargo-audit --locked
+RUN cargo install cargo-audit --locked
 
 # llvm-lib: MSVC-compatible archiver for C deps (e.g. zstd-sys) on windows-msvc targets
 # llvm-ar creates COFF archives when invoked as llvm-lib
+# llvm package also provides llvm-ar; lld is already installed from alpine-cross-platform
 RUN apk add --no-cache llvm && \
     ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib
 
-# AR_* — archiver for each Windows MSVC target
-# Used by: Rust cc crate when building static C libraries
+# =============================================================================
+# C compiler environment variables (Rust cc crate)
+# CC_<target>  — C compiler wrapper for each cross-compilation target
+# CXX_<target> — C++ compiler wrapper for each cross-compilation target
+# Wrappers are defined in alpine-cross-platform.
+# =============================================================================
+
+# Linux musl targets
+ENV CC_x86_64_unknown_linux_musl=clang-x86_64-linux-musl
+ENV CXX_x86_64_unknown_linux_musl=clang++-x86_64-linux-musl
+ENV CC_aarch64_unknown_linux_musl=clang-aarch64-linux-musl
+ENV CXX_aarch64_unknown_linux_musl=clang++-aarch64-linux-musl
+
+# macOS targets
+ENV CC_x86_64_apple_darwin=clang-x86_64-apple-darwin
+ENV CXX_x86_64_apple_darwin=clang++-x86_64-apple-darwin
+ENV CC_aarch64_apple_darwin=clang-aarch64-apple-darwin
+ENV CXX_aarch64_apple_darwin=clang++-aarch64-apple-darwin
+
+# Windows MSVC targets (clang --driver-mode=cl wrappers from alpine-cross-platform)
+ENV CC_x86_64_pc_windows_msvc=clang-x86_64-windows-msvc
+ENV CC_aarch64_pc_windows_msvc=clang-aarch64-windows-msvc
+
+# AR for Windows MSVC targets
 ENV AR_x86_64_pc_windows_msvc=llvm-lib
 ENV AR_aarch64_pc_windows_msvc=llvm-lib
 
-# CC_* — C compiler for Windows MSVC targets
-# Used by: Rust cc crate when compiling C dependencies (e.g. zstd-sys, ring)
-# clang-cl accepts MSVC-compatible --target flags
-ENV CC_x86_64_pc_windows_msvc=clang-cl
-ENV CC_aarch64_pc_windows_msvc=clang-cl
+# =============================================================================
+# Linker environment variables (Cargo)
+# CARGO_TARGET_<TRIPLE>_LINKER — linker for each target
+# Linux: lld-<arch>-linux-musl wrappers (ld.lld)
+# macOS: lld-<arch>-apple-darwin wrappers (ld64.lld)
+# Windows MSVC: lld-link-<arch>-windows-msvc wrappers (lld-link)
+# All linker wrappers are defined in alpine-cross-platform.
+# =============================================================================
 
-# CFLAGS_* — compiler flags for Windows MSVC targets (xwin SDK/CRT include paths)
-ENV CFLAGS_x86_64_pc_windows_msvc="--target=x86_64-pc-windows-msvc /imsvc/xwin/crt/include /imsvc/xwin/sdk/include/ucrt /imsvc/xwin/sdk/include/um /imsvc/xwin/sdk/include/shared"
-ENV CFLAGS_aarch64_pc_windows_msvc="--target=aarch64-pc-windows-msvc /imsvc/xwin/crt/include /imsvc/xwin/sdk/include/ucrt /imsvc/xwin/sdk/include/um /imsvc/xwin/sdk/include/shared"
+# Linux musl linkers
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=lld-x86_64-linux-musl
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=lld-aarch64-linux-musl
 
-# Cross-compilation config: linker and xwin library paths per target
-# Written to $CARGO_HOME/config.toml so project's .cargo/config.toml takes priority
-# (project rustflags override image defaults; linker/lib paths are infrastructure)
-RUN mkdir -p /root/.cargo && cat >> /root/.cargo/config.toml << 'EOF'
+# macOS linkers
+ENV CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=lld-x86_64-apple-darwin
+ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=lld-aarch64-apple-darwin
 
-# === PowerTech cross-compilation defaults (alpine-cross-rust) ===
-# Note: x86_64-unknown-linux-musl is the host platform — no custom linker needed,
-# rust uses the default (gcc from alpine-dev).
-
-[target.aarch64-unknown-linux-musl]
-linker = "zig-cc-aarch64-linux-musl"
-
-[target.x86_64-apple-darwin]
-linker = "zig-cc-x86_64-macos"
-
-[target.aarch64-apple-darwin]
-linker = "zig-cc-aarch64-macos"
-
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld"
-rustflags = [
-    "-C", "linker-flavor=lld-link",
-    "-Lnative=/xwin/crt/lib/x86_64",
-    "-Lnative=/xwin/sdk/lib/um/x86_64",
-    "-Lnative=/xwin/sdk/lib/ucrt/x86_64",
-]
-
-[target.aarch64-pc-windows-msvc]
-linker = "rust-lld"
-rustflags = [
-    "-C", "linker-flavor=lld-link",
-    "-Lnative=/xwin/crt/lib/aarch64",
-    "-Lnative=/xwin/sdk/lib/um/aarch64",
-    "-Lnative=/xwin/sdk/lib/ucrt/aarch64",
-]
-EOF
+# Windows MSVC linkers
+# ENV takes highest priority in Cargo config and works regardless of CARGO_HOME
+# (GitLab CI overrides CARGO_HOME to project dir for caching, which hides ~/.cargo/config.toml)
+ENV CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-link-x86_64-windows-msvc
+ENV CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=lld-link-aarch64-windows-msvc
 
 CMD ["/bin/sh"]
