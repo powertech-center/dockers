@@ -52,4 +52,7 @@ RUN git clone https://git.musl-libc.org/git/musl \
 # e.g. as the default user inside a devcontainer
 RUN adduser -D -s /bin/sh dev
 
+# Crossler — cross-platform packaging tool (wixl, nfpm, osslsigncode, rcodesign, xar, bomutils)
+RUN curl -fsSL https://raw.githubusercontent.com/powertech-center/crossler/master/scripts/install.sh | sh
+
 CMD ["/bin/sh"]

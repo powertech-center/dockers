@@ -38,7 +38,7 @@ Native development tools and scripting environments.
 ghcr.io/powertech-center/alpine-dev:latest
 ```
 
-Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, pwsh, musl from git master (provides `posix_getdents` for Claude Code), user `dev`.
+Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, pwsh, musl from git master (provides `posix_getdents` for Claude Code), [crossler](https://github.com/powertech-center/crossler), user `dev`.
 
 ### alpine-clang
 
