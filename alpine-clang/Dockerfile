@@ -5,12 +5,7 @@
 
 FROM ghcr.io/powertech-center/alpine-dev:latest
 
-RUN apk add --no-cache \
-    clang \
-    clang-dev \
-    lld \
-    llvm-dev \
-    llvm-static \
-    compiler-rt
+COPY shared/alpine-clang.sh /tmp/alpine-clang.sh
+RUN sh /tmp/alpine-clang.sh && rm /tmp/alpine-clang.sh
 
 CMD ["/bin/sh"]

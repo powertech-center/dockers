@@ -1,6 +1,6 @@
 # PowerTech Alpine Go
 # Go development and cross-compilation environment
-# Inherits clang cross-compilation for all 6 targets from alpine-cross-platform
+# 6 CGO cross-compilation targets: Linux musl, macOS, Windows GNU (x64/arm64 each)
 #
 # Smart compiler wrappers auto-inject -fuse-ld=lld when linking is detected.
 # No CGO_LDFLAGS needed — just set CC=clang-<arch>-<os>.
@@ -9,41 +9,54 @@
 
 FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
-RUN GO_VERSION=$(wget -qO- https://go.dev/VERSION?m=text | head -1 | sed 's/^go//') && \
-    wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
-    rm go${GO_VERSION}.linux-amd64.tar.gz
+# Install Go toolchain and set up GOPATH
+COPY shared/alpine-go.sh /tmp/alpine-go.sh
+RUN sh /tmp/alpine-go.sh && rm /tmp/alpine-go.sh
 
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
-# Prepare GOPATH for the non-root 'dev' user (created in alpine-dev)
-RUN mkdir -p /go && chown dev:dev /go
-
-# Go tools for IDE support and development workflow
+# Install Go tools as 'dev' user so binaries land in /go/bin (GOPATH)
+COPY shared/go-tools.sh /tmp/go-tools.sh
 USER dev
-RUN go install golang.org/x/tools/gopls@latest && \
-    go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install golang.org/x/tools/cmd/goimports@latest && \
-    go install honnef.co/go/tools/cmd/staticcheck@latest && \
-    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-    go install golang.org/x/vuln/cmd/govulncheck@latest && \
-    go install gotest.tools/gotestsum@latest
+RUN sh /tmp/go-tools.sh
 USER root
+RUN rm /tmp/go-tools.sh
 
-# CGo cross-compilation: set CC per build. Smart wrappers handle everything else.
-# Available clang wrappers (from alpine-cross-platform):
+# =============================================================================
+# CGo cross-compilation environment variables
+# CGO_CC_<goos>_<goarch>  — C compiler for each CGO cross-compilation target
+# CGO_CXX_<goos>_<goarch> — C++ compiler (for SWIG / .swigcxx packages)
 #
-#   Linux:
-#     GOOS=linux GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-linux-musl go build
-#     GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-linux-musl go build
-#
-#   macOS:
-#     GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-apple-darwin go build
-#     GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-apple-darwin go build
-#
-#   Windows GNU (GCC-compatible driver, MSVC sysroot, no MinGW DLLs):
-#     GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-windows-gnu go build
-#     GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-windows-gnu go build
+# Usage:
+#   GOOS=linux GOARCH=amd64 CGO_ENABLED=1 CC=$CGO_CC_linux_amd64 go build
+#   GOOS=linux GOARCH=amd64 CGO_ENABLED=1 CC=$CGO_CC_linux_amd64 CXX=$CGO_CXX_linux_amd64 go build
+# =============================================================================
+
+# Linux (musl libc — produces fully static, portable binaries)
+ENV CGO_CC_linux_amd64=clang-x86_64-linux-musl
+ENV CGO_CXX_linux_amd64=clang++-x86_64-linux-musl
+ENV CGO_CC_linux_arm64=clang-aarch64-linux-musl
+ENV CGO_CXX_linux_arm64=clang++-aarch64-linux-musl
+
+# macOS
+ENV CGO_CC_darwin_amd64=clang-x86_64-apple-darwin
+ENV CGO_CXX_darwin_amd64=clang++-x86_64-apple-darwin
+ENV CGO_CC_darwin_arm64=clang-aarch64-apple-darwin
+ENV CGO_CXX_darwin_arm64=clang++-aarch64-apple-darwin
+
+# Windows (GCC-compatible driver, MSVC sysroot, no MinGW DLLs)
+ENV CGO_CC_windows_amd64=clang-x86_64-windows-gnu
+ENV CGO_CXX_windows_amd64=clang++-x86_64-windows-gnu
+ENV CGO_CC_windows_arm64=clang-aarch64-windows-gnu
+ENV CGO_CXX_windows_arm64=clang++-aarch64-windows-gnu
+
+# CGo cross-compilation usage:
+#   GOOS=linux   GOARCH=amd64 CGO_ENABLED=1 CC=$CGO_CC_linux_amd64  go build
+#   GOOS=linux   GOARCH=arm64 CGO_ENABLED=1 CC=$CGO_CC_linux_arm64  go build
+#   GOOS=darwin  GOARCH=amd64 CGO_ENABLED=1 CC=$CGO_CC_darwin_amd64 go build
+#   GOOS=darwin  GOARCH=arm64 CGO_ENABLED=1 CC=$CGO_CC_darwin_arm64 go build
+#   GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=$CGO_CC_windows_amd64 go build
+#   GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=$CGO_CC_windows_arm64 go build
 
 CMD ["/bin/sh"]

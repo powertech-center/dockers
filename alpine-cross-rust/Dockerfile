@@ -1,34 +1,26 @@
 # PowerTech Alpine Rust
 # Rust development and cross-compilation environment
-# All 6 targets use cargo build with clang cross-compilers (from alpine-cross-platform):
-#   Linux/macOS: clang-<arch>-<os> wrappers + lld-<arch>-<os> linkers
-#   Windows MSVC: clang-<arch>-windows-msvc (clang --driver-mode=cl) + lld-link-<arch>-windows-msvc
+# 8 cargo cross-compilation targets: Linux musl/gnu, macOS, Windows MSVC (x64/arm64 each)
 #
 # Image: ghcr.io/powertech-center/alpine-cross-rust
 
 FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable
+COPY shared/alpine-rust.sh /tmp/alpine-rust.sh
+RUN sh /tmp/alpine-rust.sh && rm /tmp/alpine-rust.sh
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN rustup component add rustfmt clippy llvm-tools && \
+RUN rustup component add llvm-tools && \
     rustup target add \
-    x86_64-unknown-linux-musl \
-    aarch64-unknown-linux-musl \
-    x86_64-pc-windows-msvc \
-    aarch64-pc-windows-msvc \
-    x86_64-apple-darwin \
-    aarch64-apple-darwin
-
-RUN cargo install cargo-audit --locked
-
-# llvm-lib: MSVC-compatible archiver for C deps (e.g. zstd-sys) on windows-msvc targets
-# llvm-ar creates COFF archives when invoked as llvm-lib
-# llvm package also provides llvm-ar; lld is already installed from alpine-cross-platform
-RUN apk add --no-cache llvm && \
-    ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib
+        x86_64-unknown-linux-musl \
+        aarch64-unknown-linux-musl \
+        x86_64-unknown-linux-gnu \
+        aarch64-unknown-linux-gnu \
+        x86_64-pc-windows-msvc \
+        aarch64-pc-windows-msvc \
+        x86_64-apple-darwin \
+        aarch64-apple-darwin
 
 # =============================================================================
 # C compiler environment variables (Rust cc crate)
@@ -43,6 +35,12 @@ ENV CXX_x86_64_unknown_linux_musl=clang++-x86_64-linux-musl
 ENV CC_aarch64_unknown_linux_musl=clang-aarch64-linux-musl
 ENV CXX_aarch64_unknown_linux_musl=clang++-aarch64-linux-musl
 
+# Linux gnu targets
+ENV CC_x86_64_unknown_linux_gnu=clang-x86_64-linux-gnu
+ENV CXX_x86_64_unknown_linux_gnu=clang++-x86_64-linux-gnu
+ENV CC_aarch64_unknown_linux_gnu=clang-aarch64-linux-gnu
+ENV CXX_aarch64_unknown_linux_gnu=clang++-aarch64-linux-gnu
+
 # macOS targets
 ENV CC_x86_64_apple_darwin=clang-x86_64-apple-darwin
 ENV CXX_x86_64_apple_darwin=clang++-x86_64-apple-darwin
@@ -51,9 +49,11 @@ ENV CXX_aarch64_apple_darwin=clang++-aarch64-apple-darwin
 
 # Windows MSVC targets (clang --driver-mode=cl wrappers from alpine-cross-platform)
 ENV CC_x86_64_pc_windows_msvc=clang-x86_64-windows-msvc
+ENV CXX_x86_64_pc_windows_msvc=clang++-x86_64-windows-msvc
 ENV CC_aarch64_pc_windows_msvc=clang-aarch64-windows-msvc
+ENV CXX_aarch64_pc_windows_msvc=clang++-aarch64-windows-msvc
 
-# AR for Windows MSVC targets
+# AR for Windows MSVC targets (llvm-lib produces COFF archives for lld-link)
 ENV AR_x86_64_pc_windows_msvc=llvm-lib
 ENV AR_aarch64_pc_windows_msvc=llvm-lib
 
@@ -69,6 +69,10 @@ ENV AR_aarch64_pc_windows_msvc=llvm-lib
 # Linux musl linkers
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=lld-x86_64-linux-musl
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=lld-aarch64-linux-musl
+
+# Linux gnu linkers
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=lld-x86_64-linux-gnu
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=lld-aarch64-linux-gnu
 
 # macOS linkers
 ENV CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=lld-x86_64-apple-darwin

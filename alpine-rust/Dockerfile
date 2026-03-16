@@ -5,12 +5,9 @@
 
 FROM ghcr.io/powertech-center/alpine-dev:latest
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable
+COPY shared/alpine-rust.sh /tmp/alpine-rust.sh
+RUN sh /tmp/alpine-rust.sh && rm /tmp/alpine-rust.sh
 
 ENV PATH="/root/.cargo/bin:${PATH}"
-
-RUN rustup component add rustfmt clippy && \
-    cargo install cargo-audit --locked
 
 CMD ["/bin/sh"]

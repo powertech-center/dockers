@@ -15,7 +15,9 @@ RUN apk add --no-cache \
     pkgconf \
     linux-headers \
     python3 \
-    py3-pip
+    py3-pip && \
+    # ninja-build installs to /usr/lib/ninja-build/bin/ninja — add symlink to PATH
+    ln -s /usr/lib/ninja-build/bin/ninja /usr/local/bin/ninja
 
 # PowerShell dependencies
 RUN apk add --no-cache \

@@ -1,0 +1,5 @@
+# Normalize line endings for shell scripts to LF
+*.sh text eol=lf
+
+# Normalize line endings for Dockerfiles to LF
+Dockerfile text eol=lf

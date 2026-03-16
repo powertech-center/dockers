@@ -29,7 +29,7 @@ all: $(BUILD_TARGETS)
 define BUILD_template
 $(1): $(2)
 	@echo "Building $(REGISTRY)/$(1):latest..."
-	docker build -t $(REGISTRY)/$(1):latest $(1)/
+	docker build -t $(REGISTRY)/$(1):latest -f $(1)/Dockerfile .
 endef
 
 $(eval $(call BUILD_template,alpine-tools,))

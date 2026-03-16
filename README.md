@@ -72,13 +72,13 @@ Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit.
 
 ### alpine-cross-platform
 
-Cross-compilation infrastructure for 3 OS × 2 architectures, with 2 Windows toolchains (8 targets total).
+Cross-compilation infrastructure for 10 targets (Linux musl + glibc, macOS, Windows MSVC + GNU, each x64/arm64).
 
 ```
 ghcr.io/powertech-center/alpine-cross-platform:latest
 ```
 
-Adds: clang, lld, aarch64 musl sysroot, macOS SDK, Windows SDK (xwin), smart compiler/linker wrapper scripts.
+Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++, compiler-rt, macOS SDK, Windows SDK (xwin), smart compiler/linker wrapper scripts.
 
 **Smart wrappers** — compiler wrappers auto-detect compile vs link mode:
 - In compile-only mode (`-c`, `-S`, `-E`): pass args directly to clang
@@ -89,14 +89,16 @@ Adds: clang, lld, aarch64 musl sysroot, macOS SDK, Windows SDK (xwin), smart com
 
 | Target | C wrapper | C++ wrapper | Linker |
 |--------|-----------|-------------|--------|
-| Linux x64 | `clang-x86_64-linux-musl` | `clang++-x86_64-linux-musl` | `lld-x86_64-linux-musl` |
-| Linux ARM64 | `clang-aarch64-linux-musl` | `clang++-aarch64-linux-musl` | `lld-aarch64-linux-musl` |
+| Linux x64 (musl) | `clang-x86_64-linux-musl` | `clang++-x86_64-linux-musl` | `lld-x86_64-linux-musl` |
+| Linux arm64 (musl) | `clang-aarch64-linux-musl` | `clang++-aarch64-linux-musl` | `lld-aarch64-linux-musl` |
+| Linux x64 (glibc) | `clang-x86_64-linux-gnu` | `clang++-x86_64-linux-gnu` | `lld-x86_64-linux-gnu` |
+| Linux arm64 (glibc) | `clang-aarch64-linux-gnu` | `clang++-aarch64-linux-gnu` | `lld-aarch64-linux-gnu` |
 | macOS x64 | `clang-x86_64-apple-darwin` | `clang++-x86_64-apple-darwin` | `lld-x86_64-apple-darwin` |
-| macOS ARM64 | `clang-aarch64-apple-darwin` | `clang++-aarch64-apple-darwin` | `lld-aarch64-apple-darwin` |
+| macOS arm64 | `clang-aarch64-apple-darwin` | `clang++-aarch64-apple-darwin` | `lld-aarch64-apple-darwin` |
 | Windows x64 MSVC | `clang-x86_64-windows-msvc` | `clang++-x86_64-windows-msvc` | `lld-link-x86_64-windows-msvc` |
-| Windows ARM64 MSVC | `clang-aarch64-windows-msvc` | `clang++-aarch64-windows-msvc` | `lld-link-aarch64-windows-msvc` |
+| Windows arm64 MSVC | `clang-aarch64-windows-msvc` | `clang++-aarch64-windows-msvc` | `lld-link-aarch64-windows-msvc` |
 | Windows x64 GNU | `clang-x86_64-windows-gnu` | `clang++-x86_64-windows-gnu` | `lld-x86_64-windows-gnu` |
-| Windows ARM64 GNU | `clang-aarch64-windows-gnu` | `clang++-aarch64-windows-gnu` | `lld-aarch64-windows-gnu` |
+| Windows arm64 GNU | `clang-aarch64-windows-gnu` | `clang++-aarch64-windows-gnu` | `lld-aarch64-windows-gnu` |
 
 **Windows MSVC** (`clang-*-windows-msvc`): clang in MSVC-compatible mode (`--driver-mode=cl`). Uses xwin SDK/CRT includes (`/imsvc`). For Rust cross-compilation.
 
@@ -104,11 +106,13 @@ Adds: clang, lld, aarch64 musl sysroot, macOS SDK, Windows SDK (xwin), smart com
 
 | Component | Path |
 |-----------|------|
-| Windows SDK & CRT | `/xwin` |
-| macOS SDK | `/opt/MacOSX14.5.sdk` |
+| Windows SDK & CRT | `/usr/windows.sdk` |
+| macOS SDK | `/usr/macosx.sdk` |
 | aarch64 musl sysroot | `/usr/aarch64-alpine-linux-musl` |
-| macOS SDK env var | `SDKROOT=/opt/MacOSX14.5.sdk` |
-| xwin env var | `XWIN_CACHE_DIR=/xwin` |
+| x86_64 glibc sysroot | `/usr/x86_64-linux-gnu` |
+| aarch64 glibc sysroot | `/usr/aarch64-linux-gnu` |
+| macOS SDK env var | `SDKROOT=/usr/macosx.sdk` |
+| xwin env var | `XWIN_CACHE_DIR=/usr/windows.sdk` |
 
 ### alpine-cross-clang
 
@@ -118,7 +122,7 @@ LLVM/Clang development and cross-compilation environment.
 ghcr.io/powertech-center/alpine-cross-clang:latest
 ```
 
-Inherits all 8-target cross-compilation infrastructure from alpine-cross-platform. Adds LLVM/Clang development libraries for C/C++ work:
+Inherits all 10-target cross-compilation infrastructure from alpine-cross-platform. Adds LLVM/Clang development libraries for C/C++ work:
 
 - `clang-dev` — libclang headers and libraries (for tools using libclang API)
 - `llvm-dev` — LLVM headers and libraries (for custom passes, LLVM-based tools)
@@ -135,7 +139,7 @@ Go development and cross-compilation environment.
 ghcr.io/powertech-center/alpine-cross-go:latest
 ```
 
-Adds: Go toolchain (latest stable). Smart wrappers handle everything — just set `CC`:
+Adds: Go toolchain (latest stable). 6 CGO targets (Linux musl, macOS, Windows GNU). Smart wrappers handle everything — just set `CC`:
 
 ```bash
 # Linux
@@ -160,7 +164,7 @@ ghcr.io/powertech-center/alpine-cross-rust:latest
 ```
 
 Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit, llvm-lib (MSVC archiver).
-Targets: linux-musl (x64, arm64), windows-msvc (x64, arm64), apple-darwin (x64, arm64).
+8 cargo targets: linux-musl (x64, arm64), linux-gnu (x64, arm64), apple-darwin (x64, arm64), windows-msvc (x64, arm64).
 
 All targets use `cargo build` directly — CC/CXX/linker configured via ENV variables.
 
@@ -168,6 +172,8 @@ All targets use `cargo build` directly — CC/CXX/linker configured via ENV vari
 # All targets via cargo build
 cargo build --release --target x86_64-unknown-linux-musl
 cargo build --release --target aarch64-unknown-linux-musl
+cargo build --release --target x86_64-unknown-linux-gnu
+cargo build --release --target aarch64-unknown-linux-gnu
 cargo build --release --target x86_64-apple-darwin
 cargo build --release --target aarch64-apple-darwin
 cargo build --release --target x86_64-pc-windows-msvc
@@ -209,11 +215,13 @@ WORKDIR /workspace
 | Component | Version | How |
 |-----------|---------|-----|
 | Alpine | latest | `alpine:latest` |
-| macOS SDK | 14.5 | fixed (`ARG MACOSX_SDK_VERSION`) |
-| xwin | 0.8.0 | fixed (`ARG XWIN_VERSION`) |
+| macOS SDK | latest stable | auto via GitHub API |
+| xwin | latest stable | auto via GitHub API |
+| LLVM source | latest stable | auto via GitHub API (for compiler-rt, libc++) |
 | PowerShell | latest stable | auto via GitHub API |
 | Go | latest stable | auto via `go.dev/VERSION` |
 | Rust | latest stable | auto via rustup |
+| glibc sysroots | 2.28 | Anaconda conda-forge |
 | LLVM/Clang | latest | via `apk` (Alpine packages) |
 
 ## License
