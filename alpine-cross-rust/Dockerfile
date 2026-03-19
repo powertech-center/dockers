@@ -60,25 +60,33 @@ ENV AR_aarch64_pc_windows_msvc=llvm-lib
 # =============================================================================
 # Linker environment variables (Cargo)
 # CARGO_TARGET_<TRIPLE>_LINKER — linker for each target
-# Linux: lld-<arch>-linux-musl wrappers (ld.lld)
-# macOS: lld-<arch>-apple-darwin wrappers (ld64.lld)
-# Windows MSVC: lld-<arch>-windows-msvc wrappers
-# All linker wrappers are defined in alpine-cross-platform.
+#
+# Rust linker invocation style differs by target:
+#   - Linux musl/gnu, macOS: rustc passes GCC-driver flags (-Wl,*, -nostartfiles,
+#     -mmacosx-version-min) → needs clang wrapper (translates flags, calls lld internally)
+#   - Windows MSVC: rustc passes MSVC-style flags (/NOLOGO, /OPT:REF, /defaultlib:)
+#     → needs lld wrapper (lld -flavor link understands these natively)
+#
+# Linux gnu targets are for native development on glibc desktops (not cross-compilation),
+# so they also use clang wrappers but require a glibc sysroot to actually link.
+#
+# All clang/lld wrappers are defined in alpine-cross-platform.
 # =============================================================================
 
-# Linux musl linkers
-ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=lld-x86_64-linux-musl
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=lld-aarch64-linux-musl
+# Linux musl linkers (clang driver: translates -Wl, flags → lld)
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-x86_64-linux-musl
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=clang-aarch64-linux-musl
 
-# Linux gnu linkers
-ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=lld-x86_64-linux-gnu
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=lld-aarch64-linux-gnu
+# Linux gnu linkers (clang driver: translates -Wl, flags → lld)
+# NOTE: gnu targets require glibc sysroot — only usable on glibc-based hosts
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang-x86_64-linux-gnu
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=clang-aarch64-linux-gnu
 
-# macOS linkers
-ENV CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=lld-x86_64-apple-darwin
-ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=lld-aarch64-apple-darwin
+# macOS linkers (clang driver: translates -Wl, and -mmacosx-version-min → ld64.lld)
+ENV CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=clang-x86_64-apple-darwin
+ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=clang-aarch64-apple-darwin
 
-# Windows MSVC linkers
+# Windows MSVC linkers (lld -flavor link: understands /NOLOGO, /OPT:REF natively)
 # ENV takes highest priority in Cargo config and works regardless of CARGO_HOME
 # (GitLab CI overrides CARGO_HOME to project dir for caching, which hides ~/.cargo/config.toml)
 ENV CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-x86_64-windows-msvc

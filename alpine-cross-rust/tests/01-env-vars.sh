@@ -44,12 +44,14 @@ check_env CC_aarch64_pc_windows_msvc "clang-aarch64-windows-msvc" "CC for aarch6
 check_env CXX_aarch64_pc_windows_msvc "clang++-aarch64-windows-msvc" "CXX for aarch64-pc-windows-msvc"
 
 # CARGO_TARGET_*_LINKER env vars
-check_env CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER "lld-x86_64-linux-musl" "LINKER for x86_64-unknown-linux-musl"
-check_env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER "lld-aarch64-linux-musl" "LINKER for aarch64-unknown-linux-musl"
-check_env CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER "lld-x86_64-linux-gnu" "LINKER for x86_64-unknown-linux-gnu"
-check_env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER "lld-aarch64-linux-gnu" "LINKER for aarch64-unknown-linux-gnu"
-check_env CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER "lld-x86_64-apple-darwin" "LINKER for x86_64-apple-darwin"
-check_env CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER "lld-aarch64-apple-darwin" "LINKER for aarch64-apple-darwin"
+# Rust passes compiler-driver flags (-Wl,*, -nostartfiles, etc.) to the linker,
+# so we use clang wrappers (not raw lld) — clang translates these and calls lld internally.
+check_env CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER "clang-x86_64-linux-musl" "LINKER for x86_64-unknown-linux-musl"
+check_env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER "clang-aarch64-linux-musl" "LINKER for aarch64-unknown-linux-musl"
+check_env CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER "clang-x86_64-linux-gnu" "LINKER for x86_64-unknown-linux-gnu"
+check_env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER "clang-aarch64-linux-gnu" "LINKER for aarch64-unknown-linux-gnu"
+check_env CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER "clang-x86_64-apple-darwin" "LINKER for x86_64-apple-darwin"
+check_env CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER "clang-aarch64-apple-darwin" "LINKER for aarch64-apple-darwin"
 check_env CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER "lld-x86_64-windows-msvc" "LINKER for x86_64-pc-windows-msvc"
 check_env CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER "lld-aarch64-windows-msvc" "LINKER for aarch64-pc-windows-msvc"
 

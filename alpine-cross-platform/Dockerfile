@@ -396,6 +396,12 @@ RUN rm -rf /tmp/llvm-src
 RUN llvm-ar rc /usr/x86_64-linux-gnu/usr/lib/libssp_nonshared.a && \
     llvm-ar rc /usr/aarch64-linux-gnu/usr/lib/libssp_nonshared.a
 
+# libgcc_s.a → libunwind.a for glibc sysroots
+# Rust's gnu targets hardcode -lgcc_s for unwinding. Our toolchain uses
+# compiler-rt + libunwind instead of GCC, so we alias libgcc_s to libunwind.
+RUN ln -s libunwind.a /usr/x86_64-linux-gnu/usr/lib/libgcc_s.a && \
+    ln -s libunwind.a /usr/aarch64-linux-gnu/usr/lib/libgcc_s.a
+
 COPY shared/gen-clang-wrapper.py /tmp/gen-clang-wrapper.py
 COPY shared/gen-lld-wrapper.py /tmp/gen-lld-wrapper.py
 
