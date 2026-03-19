@@ -13,10 +13,10 @@ ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
 # Install Go tools as 'dev' user so binaries land in /go/bin (GOPATH)
-COPY shared/go-tools.sh /tmp/go-tools.sh
+COPY shared/go-dev-tools.sh /tmp/go-dev-tools.sh
 USER dev
-RUN sh /tmp/go-tools.sh
+RUN sh /tmp/go-dev-tools.sh
 USER root
-RUN rm /tmp/go-tools.sh
+RUN rm /tmp/go-dev-tools.sh
 
 CMD ["/bin/sh"]

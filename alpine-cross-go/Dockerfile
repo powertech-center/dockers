@@ -17,11 +17,11 @@ ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
 # Install Go tools as 'dev' user so binaries land in /go/bin (GOPATH)
-COPY shared/go-tools.sh /tmp/go-tools.sh
+COPY shared/go-dev-tools.sh /tmp/go-dev-tools.sh
 USER dev
-RUN sh /tmp/go-tools.sh
+RUN sh /tmp/go-dev-tools.sh
 USER root
-RUN rm /tmp/go-tools.sh
+RUN rm /tmp/go-dev-tools.sh
 
 # =============================================================================
 # CGo cross-compilation environment variables
@@ -45,7 +45,7 @@ ENV CGO_CXX_darwin_amd64=clang++-x86_64-apple-darwin
 ENV CGO_CC_darwin_arm64=clang-aarch64-apple-darwin
 ENV CGO_CXX_darwin_arm64=clang++-aarch64-apple-darwin
 
-# Windows (GCC-compatible driver, MSVC sysroot, no MinGW DLLs)
+# Windows (GCC-compatible driver, native MinGW sysroot from llvm-mingw)
 ENV CGO_CC_windows_amd64=clang-x86_64-windows-gnu
 ENV CGO_CXX_windows_amd64=clang++-x86_64-windows-gnu
 ENV CGO_CC_windows_arm64=clang-aarch64-windows-gnu

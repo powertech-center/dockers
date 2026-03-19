@@ -12,7 +12,7 @@ alpine:latest
               ├── alpine-clang      LLVM/Clang (native host)
               ├── alpine-go         Go toolchain (native host)
               ├── alpine-rust       Rust toolchain (native host)
-              └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDK
+              └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
                     ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
                     ├── alpine-cross-go       Go toolchain (cross)
                     └── alpine-cross-rust     Rust toolchain (cross)
@@ -78,7 +78,7 @@ Cross-compilation infrastructure for 10 targets (Linux musl + glibc, macOS, Wind
 ghcr.io/powertech-center/alpine-cross-platform:latest
 ```
 
-Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++, compiler-rt, macOS SDK, Windows SDK (xwin), smart compiler/linker wrapper scripts.
+Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (static), compiler-rt, macOS SDK, Windows MSVC SDK (xwin), Windows GNU sysroot (llvm-mingw), smart compiler/linker wrapper scripts.
 
 **Smart wrappers** — compiler wrappers auto-detect compile vs link mode:
 - In compile-only mode (`-c`, `-S`, `-E`): pass args directly to clang
@@ -95,24 +95,24 @@ Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++, comp
 | Linux arm64 (glibc) | `clang-aarch64-linux-gnu` | `clang++-aarch64-linux-gnu` | `lld-aarch64-linux-gnu` |
 | macOS x64 | `clang-x86_64-apple-darwin` | `clang++-x86_64-apple-darwin` | `lld-x86_64-apple-darwin` |
 | macOS arm64 | `clang-aarch64-apple-darwin` | `clang++-aarch64-apple-darwin` | `lld-aarch64-apple-darwin` |
-| Windows x64 MSVC | `clang-x86_64-windows-msvc` | `clang++-x86_64-windows-msvc` | `lld-link-x86_64-windows-msvc` |
-| Windows arm64 MSVC | `clang-aarch64-windows-msvc` | `clang++-aarch64-windows-msvc` | `lld-link-aarch64-windows-msvc` |
+| Windows x64 MSVC | `clang-x86_64-windows-msvc` | `clang++-x86_64-windows-msvc` | `lld-x86_64-windows-msvc` |
+| Windows arm64 MSVC | `clang-aarch64-windows-msvc` | `clang++-aarch64-windows-msvc` | `lld-aarch64-windows-msvc` |
 | Windows x64 GNU | `clang-x86_64-windows-gnu` | `clang++-x86_64-windows-gnu` | `lld-x86_64-windows-gnu` |
 | Windows arm64 GNU | `clang-aarch64-windows-gnu` | `clang++-aarch64-windows-gnu` | `lld-aarch64-windows-gnu` |
 
 **Windows MSVC** (`clang-*-windows-msvc`): clang in MSVC-compatible mode (`--driver-mode=cl`). Uses xwin SDK/CRT includes (`/imsvc`). For Rust cross-compilation.
 
-**Windows GNU** (`clang-*-windows-gnu`): clang in GCC-compatible mode (standard `-I`, `-D` flags), MSVC target and xwin sysroot (`-isystem`). No MinGW headers or runtime — links against system UCRT. For Go CGO cross-compilation.
+**Windows GNU** (`clang-*-windows-gnu`): clang with `--target=*-pc-windows-gnu` and native MinGW sysroot (mingw-w64 headers + CRT from llvm-mingw). Static libc++ by default. For Go CGO cross-compilation.
 
 | Component | Path |
 |-----------|------|
-| Windows SDK & CRT | `/usr/windows.sdk` |
+| Windows MSVC SDK & CRT (xwin) | `/usr/windows-msvc` |
+| Windows GNU sysroot (llvm-mingw) | `/usr/windows-gnu` |
 | macOS SDK | `/usr/macosx.sdk` |
 | aarch64 musl sysroot | `/usr/aarch64-alpine-linux-musl` |
 | x86_64 glibc sysroot | `/usr/x86_64-linux-gnu` |
 | aarch64 glibc sysroot | `/usr/aarch64-linux-gnu` |
 | macOS SDK env var | `SDKROOT=/usr/macosx.sdk` |
-| xwin env var | `XWIN_CACHE_DIR=/usr/windows.sdk` |
 
 ### alpine-cross-clang
 
@@ -150,7 +150,7 @@ GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-linux-musl go build ./...
 GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-apple-darwin go build ./...
 GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-apple-darwin go build ./...
 
-# Windows (GNU mode — GCC-compatible driver, no MinGW DLLs)
+# Windows (GNU mode — native MinGW sysroot from llvm-mingw)
 GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-windows-gnu go build ./...
 GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-windows-gnu go build ./...
 ```
@@ -217,6 +217,7 @@ WORKDIR /workspace
 | Alpine | latest | `alpine:latest` |
 | macOS SDK | latest stable | auto via GitHub API |
 | xwin | latest stable | auto via GitHub API |
+| llvm-mingw | latest stable | auto via GitHub API |
 | LLVM source | latest stable | auto via GitHub API (for compiler-rt, libc++) |
 | PowerShell | latest stable | auto via GitHub API |
 | Go | latest stable | auto via `go.dev/VERSION` |

@@ -11,3 +11,8 @@ apk add --no-cache \
     llvm-dev \
     llvm-static \
     compiler-rt
+
+# Alpine installs llvm-config with version suffix (e.g. llvm-config-21);
+# create unversioned symlink so tools and tests can find it
+ver=$(ls /usr/bin/llvm-config-* 2>/dev/null | head -1)
+[ -n "$ver" ] && ln -sf "$(basename "$ver")" /usr/bin/llvm-config

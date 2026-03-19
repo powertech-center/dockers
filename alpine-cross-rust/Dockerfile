@@ -62,7 +62,7 @@ ENV AR_aarch64_pc_windows_msvc=llvm-lib
 # CARGO_TARGET_<TRIPLE>_LINKER — linker for each target
 # Linux: lld-<arch>-linux-musl wrappers (ld.lld)
 # macOS: lld-<arch>-apple-darwin wrappers (ld64.lld)
-# Windows MSVC: lld-link-<arch>-windows-msvc wrappers (lld-link)
+# Windows MSVC: lld-<arch>-windows-msvc wrappers
 # All linker wrappers are defined in alpine-cross-platform.
 # =============================================================================
 
@@ -81,7 +81,7 @@ ENV CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=lld-aarch64-apple-darwin
 # Windows MSVC linkers
 # ENV takes highest priority in Cargo config and works regardless of CARGO_HOME
 # (GitLab CI overrides CARGO_HOME to project dir for caching, which hides ~/.cargo/config.toml)
-ENV CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-link-x86_64-windows-msvc
-ENV CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=lld-link-aarch64-windows-msvc
+ENV CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-x86_64-windows-msvc
+ENV CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=lld-aarch64-windows-msvc
 
 CMD ["/bin/sh"]
