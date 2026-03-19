@@ -190,6 +190,12 @@ make all
 make alpine-go
 make alpine-cross-go
 
+# Run tests for all cross-compilation images
+make test
+
+# Run tests for a specific image
+make test-alpine-cross-platform
+
 # Push all images to ghcr.io
 make push
 

@@ -16,11 +16,13 @@
 REGISTRY := ghcr.io/powertech-center
 
 IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
+TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
 BUILD_TARGETS  := $(IMAGES)
 CLEAN_TARGETS  := $(addprefix clean-,$(IMAGES))
 PUSH_TARGETS   := $(addprefix push-,$(IMAGES))
+TEST_TARGETS   := $(addprefix test-,$(TESTABLE))
 
-.PHONY: $(BUILD_TARGETS) all $(CLEAN_TARGETS) clean $(PUSH_TARGETS) push
+.PHONY: $(BUILD_TARGETS) all $(CLEAN_TARGETS) clean $(PUSH_TARGETS) push $(TEST_TARGETS) test
 
 # === Build targets (with dependency chain) ===
 
@@ -65,3 +67,15 @@ push-$(1):
 endef
 
 $(foreach img,$(IMAGES),$(eval $(call PUSH_template,$(img))))
+
+# === Test targets (only for images with test.sh) ===
+
+test: $(TEST_TARGETS)
+
+define TEST_template
+test-$(1):
+	@echo "Testing $(REGISTRY)/$(1):latest..."
+	docker run --rm -v ./$(1):/tests $(REGISTRY)/$(1):latest sh /tests/test.sh
+endef
+
+$(foreach img,$(TESTABLE),$(eval $(call TEST_template,$(img))))
