@@ -15,9 +15,13 @@ RUN apk add --no-cache \
     pkgconf \
     linux-headers \
     python3 \
-    py3-pip && \
+    py3-pip \
+    gdb \
+    strace && \
     # ninja-build installs to /usr/lib/ninja-build/bin/ninja — add symlink to PATH
-    ln -s /usr/lib/ninja-build/bin/ninja /usr/local/bin/ninja
+    ln -s /usr/lib/ninja-build/bin/ninja /usr/local/bin/ninja && \
+    # Python debugger for VSCode
+    pip install --break-system-packages debugpy
 
 # PowerShell dependencies
 RUN apk add --no-cache \

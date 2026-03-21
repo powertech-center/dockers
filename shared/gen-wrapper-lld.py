@@ -2,14 +2,14 @@
 """Generate an lld cross-linker wrapper script (sh).
 
 Usage:
-    python3 gen-lld-wrapper.py <target> --sysroot <path>
+    python3 gen-wrapper-lld.py <target> --sysroot <path>
 
 Output: shell script to stdout.
 
 Example:
-    python3 gen-lld-wrapper.py x86_64-linux-musl --sysroot / > lld-x86_64-linux-musl
-    python3 gen-lld-wrapper.py x86_64-windows-gnu --sysroot /usr/windows-gnu > lld-x86_64-windows-gnu
-    python3 gen-lld-wrapper.py x86_64-windows-msvc --sysroot /usr/windows-msvc > lld-x86_64-windows-msvc
+    python3 gen-wrapper-lld.py x86_64-linux-musl --sysroot / > lld-x86_64-linux-musl
+    python3 gen-wrapper-lld.py x86_64-windows-gnu --sysroot /usr/windows-gnu > lld-x86_64-windows-gnu
+    python3 gen-wrapper-lld.py x86_64-windows-msvc --sysroot /usr/windows-msvc > lld-x86_64-windows-msvc
 """
 
 import argparse

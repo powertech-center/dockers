@@ -2,13 +2,13 @@
 """Generate a clang/clang++ cross-compilation wrapper script (sh).
 
 Usage:
-    python3 gen-clang-wrapper.py <target> --sysroot <path> [--cpp]
+    python3 gen-wrapper-clang.py <target> --sysroot <path> [--cpp]
 
 Output: shell script to stdout.
 
 Example:
-    python3 gen-clang-wrapper.py x86_64-linux-musl --sysroot / > clang-x86_64-linux-musl
-    python3 gen-clang-wrapper.py x86_64-windows-gnu --sysroot /usr/windows-gnu --cpp > clang++-x86_64-windows-gnu
+    python3 gen-wrapper-clang.py x86_64-linux-musl --sysroot / > clang-x86_64-linux-musl
+    python3 gen-wrapper-clang.py x86_64-windows-gnu --sysroot /usr/windows-gnu --cpp > clang++-x86_64-windows-gnu
 """
 
 import argparse

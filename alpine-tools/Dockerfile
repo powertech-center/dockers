@@ -13,12 +13,17 @@ RUN apk add --no-cache \
     curl \
     tar \
     xz \
+    zstd \
     zip \
     unzip \
     p7zip \
     jq \
     grep \
     sed \
+    diffutils \
+    findutils \
+    tree \
+    htop \
     nano \
     openssh-client
 

@@ -23,13 +23,12 @@ RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/alpine-csharp.sh
 
 ENV DOTNET_ROOT="/usr/lib/dotnet"
-ENV PATH="${PATH}:/home/dev/.dotnet/tools"
+ENV DOTNET_CLI_HOME=/opt/dotnet-tools
+ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 
-# Install .NET dev tools as 'dev' user
-USER dev
+# Install .NET dev tools to global path (accessible to all users)
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp-dev-tools.sh
-USER root
+    sh /tmp/shared/dev-tools-csharp.sh
 
 # =============================================================================
 # NativeAOT cross-compilation environment

@@ -15,5 +15,5 @@ apk add --no-cache \
 # Warm up the NuGet package cache and verify SDK works
 dotnet --info > /dev/null 2>&1
 
-# Prepare solution directory for the non-root 'dev' user (created in alpine-dev)
-mkdir -p /app && chown dev:dev /app
+# Prepare solution directory — writable for all users
+mkdir -p /app && chmod 777 /app

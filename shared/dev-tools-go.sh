@@ -1,9 +1,9 @@
 #!/bin/sh
-# Shared Go tools installation (run as 'dev' user)
+# Shared Go tools installation
 # Used by: alpine-go, alpine-cross-go
 #
 # Installs Go tools for IDE support and development workflow.
-# Must be run as the 'dev' user with GOPATH and PATH already set.
+# Runs as root; GOPATH (/go) is made writable for all users afterward.
 
 set -e
 

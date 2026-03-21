@@ -6,10 +6,13 @@
 
 FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
+ENV RUSTUP_HOME=/opt/rust/rustup
+ENV CARGO_HOME=/opt/rust/cargo
+
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/alpine-rust.sh
 
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="${CARGO_HOME}/bin:${PATH}"
 
 RUN rustup component add llvm-tools && \
     rustup target add \

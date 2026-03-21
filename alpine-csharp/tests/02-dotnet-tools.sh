@@ -4,10 +4,9 @@
 
 echo "=== .NET dev tools ==="
 
-# Check global tools installed for 'dev' user
+# Check global tools in /opt/dotnet-tools (shared for all users)
 for tool in csharpier dotnet-outdated reportgenerator; do
-    # Global tools are in ~/.dotnet/tools; check as dev user
-    if [ -f "/home/dev/.dotnet/tools/$tool" ]; then
+    if [ -f "/opt/dotnet-tools/.dotnet/tools/$tool" ]; then
         test_pass "$tool available"
     else
         test_skip "$tool available" "not installed (optional)"

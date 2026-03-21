@@ -16,11 +16,9 @@ RUN --mount=type=bind,source=shared,target=/tmp/shared \
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
-# Install Go tools as 'dev' user so binaries land in /go/bin (GOPATH)
-USER dev
+# Install Go dev tools (gopls, dlv, etc.) — accessible to all users
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/go-dev-tools.sh
-USER root
+    sh /tmp/shared/dev-tools-go.sh
 
 # =============================================================================
 # CGo cross-compilation environment variables

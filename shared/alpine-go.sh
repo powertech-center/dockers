@@ -13,5 +13,5 @@ wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
 tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
 rm go${GO_VERSION}.linux-amd64.tar.gz
 
-# Prepare GOPATH for the non-root 'dev' user (created in alpine-dev)
-mkdir -p /go && chown dev:dev /go
+# Prepare GOPATH — writable for all users (dev, root, CI runners, etc.)
+mkdir -p /go && chmod 777 /go
