@@ -6,17 +6,16 @@
 FROM ghcr.io/powertech-center/alpine-dev:latest
 
 # Install Go toolchain and set up GOPATH
-COPY shared/alpine-go.sh /tmp/alpine-go.sh
-RUN sh /tmp/alpine-go.sh && rm /tmp/alpine-go.sh
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/alpine-go.sh
 
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
 
 # Install Go tools as 'dev' user so binaries land in /go/bin (GOPATH)
-COPY shared/go-dev-tools.sh /tmp/go-dev-tools.sh
 USER dev
-RUN sh /tmp/go-dev-tools.sh
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/go-dev-tools.sh
 USER root
-RUN rm /tmp/go-dev-tools.sh
 
 CMD ["/bin/sh"]

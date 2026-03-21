@@ -5,7 +5,7 @@
 
 FROM ghcr.io/powertech-center/alpine-dev:latest
 
-COPY shared/alpine-clang.sh /tmp/alpine-clang.sh
-RUN sh /tmp/alpine-clang.sh && rm /tmp/alpine-clang.sh
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/alpine-clang.sh
 
 CMD ["/bin/sh"]

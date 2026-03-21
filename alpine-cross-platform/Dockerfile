@@ -7,9 +7,8 @@
 #   Stage 1: Base tools — clang/lld/llvm, macOS SDK, Windows MSVC SDK (xwin),
 #            Windows GNU sysroot (llvm-mingw), aarch64 musl sysroot
 #   Stage 2: glibc 2.28 sysroots (x86_64 + aarch64) from Anaconda conda-forge
-#   Stage 3: LLVM source + compiler-rt builtins for 4 Linux + 2 Windows GNU targets
-#   Stage 4: libc++ (static) for 4 Linux + 2 Windows GNU targets
-#   Stage 5: Compiler and linker wrappers for all 10 cross-compilation targets
+#   Stage 3: LLVM runtimes — compiler-rt builtins + libc++ (static) for 6 targets
+#   Stage 4: Compiler and linker wrappers for all 10 cross-compilation targets
 #
 # Image: ghcr.io/powertech-center/alpine-cross-platform
 
@@ -62,6 +61,18 @@ RUN mkdir -p /usr/aarch64-alpine-linux-musl/etc/apk && \
         musl musl-dev && \
     rm -rf /usr/aarch64-alpine-linux-musl/lib/apk \
            /usr/aarch64-alpine-linux-musl/etc/apk
+
+# Add Linux kernel UAPI headers to the aarch64-musl cross-sysroot.
+# libc++ needs <linux/futex.h> (for atomic wait) which pulls <asm/types.h>.
+RUN cd /tmp && \
+    HEADERS_VER=$(awk '/^P:linux-headers/{getline; print substr($0,3)}' /lib/apk/db/installed) && \
+    wget -q https://dl-cdn.alpinelinux.org/alpine/latest-stable/main/aarch64/linux-headers-${HEADERS_VER}.apk && \
+    mkdir headers-aarch64 && \
+    tar xzf linux-headers-${HEADERS_VER}.apk -C headers-aarch64 && \
+    cp -r headers-aarch64/usr/include/linux /usr/aarch64-alpine-linux-musl/usr/include/ && \
+    cp -r headers-aarch64/usr/include/asm /usr/aarch64-alpine-linux-musl/usr/include/ && \
+    cp -r headers-aarch64/usr/include/asm-generic /usr/aarch64-alpine-linux-musl/usr/include/ && \
+    rm -rf headers-aarch64 linux-headers-*.apk
 
 # =============================================================================
 # windows-gnu sysroot (llvm-mingw UCRT headers + import libs)
@@ -203,11 +214,31 @@ RUN mkdir -p /tmp/conda /usr/aarch64-linux-gnu && \
 RUN apk del --no-cache zstd
 
 # =============================================================================
-# Stage 3: LLVM source + compiler-rt builtins for 4 Linux + 2 Windows GNU targets
+# Stage 3: LLVM runtimes — compiler-rt builtins + libc++ for 6 cross targets
+#
+# Downloads LLVM source, builds compiler-rt and libc++ for all targets,
+# then removes the source — all in a single RUN to avoid keeping ~224 MB
+# of LLVM source in an intermediate Docker layer.
+#
+# Targets: x86_64-linux-musl, aarch64-linux-musl, x86_64-linux-gnu,
+#          aarch64-linux-gnu, x86_64-pc-windows-gnu, aarch64-pc-windows-gnu
 # =============================================================================
 
-# Detect latest stable LLVM release and download source (only dirs needed for runtimes build)
-RUN LLVM_VERSION=$(wget -qO- "https://api.github.com/repos/llvm/llvm-project/releases" | \
+# Download LLVM source, build compiler-rt builtins + libc++ for 6 targets, clean up.
+#
+# compiler-rt builtins: 128-bit float/int intrinsics (__lttf2, __udivti3 etc.)
+# for aarch64, unifies all targets on -rtlib=compiler-rt.
+# Installed into clang resource dir so -rtlib=compiler-rt finds them automatically.
+#
+# libc++: static builds of libc++, libc++abi, libunwind for all cross targets.
+#
+# Workaround: Alpine's LLVM package doesn't ship test-support libraries
+# (libLLVMTestingAnnotations, libLLVMTestingSupport, libllvm_gtest*), but
+# LLVMConfig.cmake still references them. We create dummy archives so
+# CMake configure succeeds — compiler-rt never links against them.
+RUN \
+    # ── 1. Download LLVM source (only dirs needed for runtimes) ──
+    LLVM_VERSION=$(wget -qO- "https://api.github.com/repos/llvm/llvm-project/releases" | \
         jq -r '[.[] | select(.prerelease == false and (.tag_name | startswith("llvmorg-")))] | first | .tag_name | ltrimstr("llvmorg-")') && \
     echo "LLVM ${LLVM_VERSION}" && \
     cd /tmp && \
@@ -224,30 +255,10 @@ RUN LLVM_VERSION=$(wget -qO- "https://api.github.com/repos/llvm/llvm-project/rel
         llvm-project-${LLVM_VERSION}.src/compiler-rt \
         llvm-project-${LLVM_VERSION}.src/third-party && \
     rm llvm-project-${LLVM_VERSION}.src.tar.xz && \
-    mv llvm-project-${LLVM_VERSION}.src /tmp/llvm-src
-
-# Add Linux kernel UAPI headers to the aarch64-musl cross-sysroot.
-# libc++ needs <linux/futex.h> (for atomic wait) which pulls <asm/types.h>.
-RUN cd /tmp && \
-    HEADERS_VER=$(awk '/^P:linux-headers/{getline; print substr($0,3)}' /lib/apk/db/installed) && \
-    wget -q https://dl-cdn.alpinelinux.org/alpine/latest-stable/main/aarch64/linux-headers-${HEADERS_VER}.apk && \
-    mkdir headers-aarch64 && \
-    tar xzf linux-headers-${HEADERS_VER}.apk -C headers-aarch64 && \
-    cp -r headers-aarch64/usr/include/linux /usr/aarch64-alpine-linux-musl/usr/include/ && \
-    cp -r headers-aarch64/usr/include/asm /usr/aarch64-alpine-linux-musl/usr/include/ && \
-    cp -r headers-aarch64/usr/include/asm-generic /usr/aarch64-alpine-linux-musl/usr/include/ && \
-    rm -rf headers-aarch64 linux-headers-*.apk
-
-# Build compiler-rt builtins for all Linux and Windows GNU targets.
-# Provides 128-bit float/int intrinsics (__lttf2, __udivti3 etc.) for aarch64,
-# and unifies all targets on -rtlib=compiler-rt.
-# Installed into clang resource dir so -rtlib=compiler-rt finds them automatically.
-#
-# Workaround: Alpine's LLVM package doesn't ship test-support libraries
-# (libLLVMTestingAnnotations, libLLVMTestingSupport, libllvm_gtest*), but
-# LLVMConfig.cmake still references them. We create dummy archives so
-# CMake configure succeeds — compiler-rt never links against them.
-RUN CLANG_RESOURCE_DIR=$(clang --print-resource-dir) && \
+    mv llvm-project-${LLVM_VERSION}.src /tmp/llvm-src && \
+    #
+    # ── 2. Create dummy LLVM test-support archives (Alpine workaround) ──
+    CLANG_RESOURCE_DIR=$(clang --print-resource-dir) && \
     LLVM_LIB_DIR=$(dirname $(dirname $CLANG_RESOURCE_DIR)) && \
     printf 'int __dummy_llvmt = 0;' > /tmp/dummy_llvmt.c && \
     clang -c /tmp/dummy_llvmt.c -o /tmp/dummy_llvmt.o && \
@@ -256,6 +267,8 @@ RUN CLANG_RESOURCE_DIR=$(clang --print-resource-dir) && \
             llvm-ar rc "${LLVM_LIB_DIR}/${lib}" /tmp/dummy_llvmt.o || true; \
     done && \
     rm -f /tmp/dummy_llvmt.c /tmp/dummy_llvmt.o && \
+    #
+    # ── 3. Build compiler-rt builtins for 6 targets ──
     for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu x86_64-pc-windows-gnu aarch64-pc-windows-gnu; do \
         arch="${target%%-*}" && \
         system_name="" && \
@@ -292,26 +305,20 @@ RUN CLANG_RESOURCE_DIR=$(clang --print-resource-dir) && \
         ninja -C /tmp/build-rt-${target} && \
         ninja -C /tmp/build-rt-${target} install && \
         rm -rf /tmp/build-rt-${target}; \
-    done
-
-# Symlink compiler-rt builtins as libgcc.a in each sysroot.
-# libc++abi CMake detects libgcc and adds -lgcc to the shared link line.
-# The symlink satisfies -lgcc with real builtins (instead of empty stub).
-RUN CLANG_RESOURCE_DIR=$(clang --print-resource-dir) && \
+    done && \
+    #
+    # ── 4. Symlink compiler-rt builtins as libgcc.a in each sysroot ──
+    # libc++abi CMake detects libgcc and adds -lgcc to the shared link line.
+    # The symlink satisfies -lgcc with real builtins (instead of empty stub).
     ln -sf ${CLANG_RESOURCE_DIR}/lib/x86_64-unknown-linux-musl/libclang_rt.builtins.a /usr/lib/libgcc.a && \
     ln -sf ${CLANG_RESOURCE_DIR}/lib/aarch64-unknown-linux-musl/libclang_rt.builtins.a /usr/aarch64-alpine-linux-musl/usr/lib/libgcc.a && \
     ln -sf ${CLANG_RESOURCE_DIR}/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a /usr/x86_64-linux-gnu/usr/lib/libgcc.a && \
     ln -sf ${CLANG_RESOURCE_DIR}/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins.a /usr/aarch64-linux-gnu/usr/lib/libgcc.a && \
     ln -sf ${CLANG_RESOURCE_DIR}/lib/x86_64-pc-windows-gnu/libclang_rt.builtins.a /usr/windows-gnu/x86_64/lib/libgcc.a && \
-    ln -sf ${CLANG_RESOURCE_DIR}/lib/aarch64-pc-windows-gnu/libclang_rt.builtins.a /usr/windows-gnu/aarch64/lib/libgcc.a
-
-# =============================================================================
-# Stage 4: Build libc++ (static) for 4 Linux + 2 Windows GNU targets
-# Targets: x86_64-linux-musl, aarch64-linux-musl, x86_64-linux-gnu, aarch64-linux-gnu,
-#          x86_64-pc-windows-gnu, aarch64-pc-windows-gnu
-# =============================================================================
-
-RUN for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu x86_64-pc-windows-gnu aarch64-pc-windows-gnu; do \
+    ln -sf ${CLANG_RESOURCE_DIR}/lib/aarch64-pc-windows-gnu/libclang_rt.builtins.a /usr/windows-gnu/aarch64/lib/libgcc.a && \
+    #
+    # ── 5. Build libc++ (static) for 6 targets ──
+    for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu x86_64-pc-windows-gnu aarch64-pc-windows-gnu; do \
         echo "=== Building libc++ for ${target} ===" && \
         arch="${target%%-*}" && \
         sysroot_flags="" && musl_flags="" && extra_flags="" && linker_flags="" && install_prefix="" && \
@@ -365,13 +372,13 @@ RUN for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-
         ninja -C /tmp/build-libcxx-${target} && \
         ninja -C /tmp/build-libcxx-${target} install && \
         rm -rf /tmp/build-libcxx-${target}; \
-    done
-
-# Clean up LLVM sources — no longer needed after all libc++ targets are built
-RUN rm -rf /tmp/llvm-src
+    done && \
+    #
+    # ── 6. Clean up LLVM source ──
+    rm -rf /tmp/llvm-src
 
 # =============================================================================
-# Stage 5: Compiler, linker, and utility wrappers for all 10 targets
+# Stage 4: Compiler, linker, and utility wrappers for all 10 targets
 #
 # Generated by gen-clang-wrapper.py and gen-lld-wrapper.py (shared/).
 #
@@ -402,103 +409,99 @@ RUN llvm-ar rc /usr/x86_64-linux-gnu/usr/lib/libssp_nonshared.a && \
 RUN ln -s libunwind.a /usr/x86_64-linux-gnu/usr/lib/libgcc_s.a && \
     ln -s libunwind.a /usr/aarch64-linux-gnu/usr/lib/libgcc_s.a
 
-COPY shared/gen-clang-wrapper.py /tmp/gen-clang-wrapper.py
-COPY shared/gen-lld-wrapper.py /tmp/gen-lld-wrapper.py
-
-# windres / dlltool wrappers for Windows GNU targets
-RUN for arch in x86_64 aarch64; do \
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    #
+    # ── windres / dlltool wrappers (Windows GNU) ──
+    for arch in x86_64 aarch64; do \
         printf '#!/bin/sh\nexec llvm-windres --target=%s-pc-windows-gnu -I /usr/windows-gnu/include "$@"\n' "$arch" \
             > /usr/local/bin/windres-${arch}-windows-gnu && \
         chmod +x /usr/local/bin/windres-${arch}-windows-gnu; \
-    done
-
-RUN for arch in x86_64 aarch64; do \
+    done && \
+    for arch in x86_64 aarch64; do \
         machine=$( [ "$arch" = "x86_64" ] && echo "i386:x86-64" || echo "arm64" ) && \
         printf '#!/bin/sh\nexec llvm-dlltool -m %s "$@"\n' "$machine" \
             > /usr/local/bin/dlltool-${arch}-windows-gnu && \
         chmod +x /usr/local/bin/dlltool-${arch}-windows-gnu; \
-    done
-
-# lld wrappers (Linux)
-RUN for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu; do \
+    done && \
+    #
+    # ── lld wrappers (Linux) ──
+    for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu; do \
         case "$target" in \
             x86_64-linux-musl)  sysroot=/ ;; \
             aarch64-linux-musl) sysroot=/usr/aarch64-alpine-linux-musl ;; \
             x86_64-linux-gnu)   sysroot=/usr/x86_64-linux-gnu ;; \
             aarch64-linux-gnu)  sysroot=/usr/aarch64-linux-gnu ;; \
         esac && \
-        python3 /tmp/gen-lld-wrapper.py "$target" --sysroot "$sysroot" \
+        python3 /tmp/shared/gen-lld-wrapper.py "$target" --sysroot "$sysroot" \
             > /usr/local/bin/lld-${target} && \
         chmod +x /usr/local/bin/lld-${target}; \
-    done
-
-# lld wrappers (macOS)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-lld-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk \
+    done && \
+    #
+    # ── lld wrappers (macOS) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-lld-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk \
             > /usr/local/bin/lld-${arch}-apple-darwin && \
         chmod +x /usr/local/bin/lld-${arch}-apple-darwin; \
-    done
-
-# lld wrappers (Windows MSVC)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-lld-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc \
+    done && \
+    #
+    # ── lld wrappers (Windows MSVC) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-lld-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc \
             > /usr/local/bin/lld-${arch}-windows-msvc && \
         chmod +x /usr/local/bin/lld-${arch}-windows-msvc; \
-    done
-
-# lld wrappers (Windows GNU)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-lld-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu \
+    done && \
+    #
+    # ── lld wrappers (Windows GNU) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-lld-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu \
             > /usr/local/bin/lld-${arch}-windows-gnu && \
         chmod +x /usr/local/bin/lld-${arch}-windows-gnu; \
-    done
-
-# clang / clang++ wrappers (Linux)
-RUN for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu; do \
+    done && \
+    #
+    # ── clang / clang++ wrappers (Linux) ──
+    for target in x86_64-linux-musl aarch64-linux-musl x86_64-linux-gnu aarch64-linux-gnu; do \
         case "$target" in \
             x86_64-linux-musl)  sysroot=/ ;; \
             aarch64-linux-musl) sysroot=/usr/aarch64-alpine-linux-musl ;; \
             x86_64-linux-gnu)   sysroot=/usr/x86_64-linux-gnu ;; \
             aarch64-linux-gnu)  sysroot=/usr/aarch64-linux-gnu ;; \
         esac && \
-        python3 /tmp/gen-clang-wrapper.py "$target" --sysroot "$sysroot" \
+        python3 /tmp/shared/gen-clang-wrapper.py "$target" --sysroot "$sysroot" \
             > /usr/local/bin/clang-${target} && \
         chmod +x /usr/local/bin/clang-${target} && \
-        python3 /tmp/gen-clang-wrapper.py "$target" --sysroot "$sysroot" --cpp \
+        python3 /tmp/shared/gen-clang-wrapper.py "$target" --sysroot "$sysroot" --cpp \
             > /usr/local/bin/clang++-${target} && \
         chmod +x /usr/local/bin/clang++-${target}; \
-    done
-
-# clang / clang++ wrappers (macOS)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk \
+    done && \
+    #
+    # ── clang / clang++ wrappers (macOS) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk \
             > /usr/local/bin/clang-${arch}-apple-darwin && \
         chmod +x /usr/local/bin/clang-${arch}-apple-darwin && \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk --cpp \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-apple-darwin --sysroot /usr/macosx.sdk --cpp \
             > /usr/local/bin/clang++-${arch}-apple-darwin && \
         chmod +x /usr/local/bin/clang++-${arch}-apple-darwin; \
-    done
-
-# clang / clang++ wrappers (Windows MSVC)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc \
+    done && \
+    #
+    # ── clang / clang++ wrappers (Windows MSVC) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc \
             > /usr/local/bin/clang-${arch}-windows-msvc && \
         chmod +x /usr/local/bin/clang-${arch}-windows-msvc && \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc --cpp \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-windows-msvc --sysroot /usr/windows-msvc --cpp \
             > /usr/local/bin/clang++-${arch}-windows-msvc && \
         chmod +x /usr/local/bin/clang++-${arch}-windows-msvc; \
-    done
-
-# clang / clang++ wrappers (Windows GNU)
-RUN for arch in x86_64 aarch64; do \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu \
+    done && \
+    #
+    # ── clang / clang++ wrappers (Windows GNU) ──
+    for arch in x86_64 aarch64; do \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu \
             > /usr/local/bin/clang-${arch}-windows-gnu && \
         chmod +x /usr/local/bin/clang-${arch}-windows-gnu && \
-        python3 /tmp/gen-clang-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu --cpp \
+        python3 /tmp/shared/gen-clang-wrapper.py ${arch}-windows-gnu --sysroot /usr/windows-gnu --cpp \
             > /usr/local/bin/clang++-${arch}-windows-gnu && \
         chmod +x /usr/local/bin/clang++-${arch}-windows-gnu; \
     done
-
-RUN rm /tmp/gen-clang-wrapper.py /tmp/gen-lld-wrapper.py
 
 CMD ["/bin/sh"]

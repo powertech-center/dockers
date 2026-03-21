@@ -6,8 +6,8 @@
 
 FROM ghcr.io/powertech-center/alpine-cross-platform:latest
 
-COPY shared/alpine-rust.sh /tmp/alpine-rust.sh
-RUN sh /tmp/alpine-rust.sh && rm /tmp/alpine-rust.sh
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/alpine-rust.sh
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
