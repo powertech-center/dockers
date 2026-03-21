@@ -8,15 +8,17 @@
 #                 ├── alpine-clang      (LLVM/Clang, native host)
 #                 ├── alpine-go         (Go toolchain, native host)
 #                 ├── alpine-rust       (Rust toolchain, native host)
+#                 ├── alpine-csharp     (.NET SDK + NativeAOT, native host)
 #                 └── alpine-cross-platform  (clang wrappers, macOS SDK, xwin)
 #                       ├── alpine-cross-clang    (LLVM/Clang toolchain + dev libs)
 #                       ├── alpine-cross-go       (Go toolchain)
-#                       └── alpine-cross-rust     (Rust + cargo-audit)
+#                       ├── alpine-cross-rust     (Rust + cargo-audit)
+#                       └── alpine-cross-csharp   (.NET SDK + NativeAOT cross-compilation)
 
 REGISTRY := ghcr.io/powertech-center
 
-IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
-TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust
+IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-csharp alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-cross-csharp
+TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-csharp alpine-cross-csharp
 BUILD_TARGETS  := $(IMAGES)
 CLEAN_TARGETS  := $(addprefix clean-,$(IMAGES))
 PUSH_TARGETS   := $(addprefix push-,$(IMAGES))
@@ -42,7 +44,9 @@ $(eval $(call BUILD_template,alpine-rust,alpine-dev))
 $(eval $(call BUILD_template,alpine-cross-platform,alpine-dev))
 $(eval $(call BUILD_template,alpine-cross-clang,alpine-cross-platform))
 $(eval $(call BUILD_template,alpine-cross-go,alpine-cross-platform))
+$(eval $(call BUILD_template,alpine-csharp,alpine-dev))
 $(eval $(call BUILD_template,alpine-cross-rust,alpine-cross-platform))
+$(eval $(call BUILD_template,alpine-cross-csharp,alpine-cross-platform))
 
 # === Clean targets per image ===
 

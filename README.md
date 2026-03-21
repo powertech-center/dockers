@@ -10,10 +10,12 @@ alpine:latest
   └── alpine-tools              base utilities
         └── alpine-dev          build tools & scripting
               ├── alpine-clang      LLVM/Clang (native host)
+              ├── alpine-csharp     .NET/C# (native host)
               ├── alpine-go         Go toolchain (native host)
               ├── alpine-rust       Rust toolchain (native host)
               └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
                     ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
+                    ├── alpine-cross-csharp   .NET/C# NativeAOT (cross)
                     ├── alpine-cross-go       Go toolchain (cross)
                     └── alpine-cross-rust     Rust toolchain (cross)
 ```
@@ -49,6 +51,22 @@ ghcr.io/powertech-center/alpine-clang:latest
 ```
 
 Adds: clang, clang-dev, lld, llvm-dev, llvm-static, compiler-rt.
+
+### alpine-csharp
+
+Native .NET/C# development environment with NativeAOT support (host compilation only).
+
+```
+ghcr.io/powertech-center/alpine-csharp:latest
+```
+
+Adds: .NET 9 SDK, zlib-dev (NativeAOT dependency), dev tools (csharpier, dotnet-outdated, reportgenerator).
+
+NativeAOT compiles C# to native ELF binaries on the host:
+
+```bash
+dotnet publish -r linux-musl-x64 -p:PublishAot=true
+```
 
 ### alpine-go
 
@@ -130,6 +148,44 @@ Inherits all 10-target cross-compilation infrastructure from alpine-cross-platfo
 - `compiler-rt` — runtime library (builtins, sanitizers, profiling)
 
 Use this image when developing C/C++ projects that need cross-compilation or when building LLVM-based tools.
+
+### alpine-cross-csharp
+
+.NET/C# development and NativeAOT cross-compilation environment.
+
+```
+ghcr.io/powertech-center/alpine-cross-csharp:latest
+```
+
+Adds: .NET 9 SDK, zlib-dev, dev tools (csharpier, dotnet-outdated, reportgenerator).
+
+NativeAOT cross-compiles C# to native Linux binaries for 4 targets. Standard `dotnet publish` (managed IL) works for all RIDs including Windows and macOS.
+
+```bash
+# NativeAOT cross-compilation (native binaries)
+dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
+  -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
+  -p:SysRoot=/usr/aarch64-alpine-linux-musl \
+  -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+
+dotnet publish -r linux-x64 -p:PublishAot=true \
+  -p:CppCompilerAndLinker=clang-x86_64-linux-gnu \
+  -p:SysRoot=/usr/x86_64-linux-gnu \
+  -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+
+# Standard publish for Windows/macOS (managed IL, not NativeAOT)
+dotnet publish -r win-x64 --self-contained
+dotnet publish -r osx-arm64 --self-contained
+```
+
+| NativeAOT Target | RID | CppCompilerAndLinker | SysRoot |
+|------------------|-----|---------------------|---------|
+| Linux x64 (musl) | `linux-musl-x64` | `clang-x86_64-linux-musl` | `/` |
+| Linux arm64 (musl) | `linux-musl-arm64` | `clang-aarch64-linux-musl` | `/usr/aarch64-alpine-linux-musl` |
+| Linux x64 (glibc) | `linux-x64` | `clang-x86_64-linux-gnu` | `/usr/x86_64-linux-gnu` |
+| Linux arm64 (glibc) | `linux-arm64` | `clang-aarch64-linux-gnu` | `/usr/aarch64-linux-gnu` |
+
+**Important**: Always pass `-p:LinkerFlavor=lld` for cross-architecture builds. NativeAOT defaults to `-fuse-ld=bfd` which only supports x86_64.
 
 ### alpine-cross-go
 
@@ -226,6 +282,7 @@ WORKDIR /workspace
 | llvm-mingw | latest stable | auto via GitHub API |
 | LLVM source | latest stable | auto via GitHub API (for compiler-rt, libc++) |
 | PowerShell | latest stable | auto via GitHub API |
+| .NET | 9.0 | via `apk` (Alpine packages) |
 | Go | latest stable | auto via `go.dev/VERSION` |
 | Rust | latest stable | auto via rustup |
 | glibc sysroots | 2.28 | Anaconda conda-forge |
