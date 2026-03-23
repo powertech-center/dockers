@@ -13,6 +13,7 @@ alpine:latest
               ├── alpine-csharp     .NET/C# (native host)
               ├── alpine-go         Go toolchain (native host)
               ├── alpine-rust       Rust toolchain (native host)
+              ├── alpine-mobile     Android SDK, Flutter, React Native
               └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
                     ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
                     ├── alpine-cross-csharp   .NET/C# NativeAOT (cross)
@@ -87,6 +88,53 @@ ghcr.io/powertech-center/alpine-rust:latest
 ```
 
 Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit.
+
+### alpine-mobile
+
+Universal mobile development environment for Android, Flutter, and React Native.
+
+```
+ghcr.io/powertech-center/alpine-mobile:latest
+```
+
+Adds: gcompat (glibc shim), OpenJDK (latest LTS), Android SDK (cmdline-tools, build-tools, platform-tools, platforms, NDK), Gradle, Node.js LTS, npm, yarn, pnpm, Flutter SDK, Dart SDK.
+
+Suitable for CI/CD Android builds and as a VS Code Dev Container for mobile development.
+
+**Android builds** — Gradle-based projects build out of the box:
+
+```bash
+# Inside the container
+cd /workspace/my-android-app
+./gradlew assembleRelease
+```
+
+**Flutter** — Android and web targets:
+
+```bash
+flutter create my_app && cd my_app
+flutter build apk
+flutter build web
+```
+
+**React Native** — Android builds via Gradle:
+
+```bash
+cd /workspace/my-rn-app
+npm install
+npx react-native build-android --mode=release
+```
+
+**iOS note**: Full iOS development requires macOS (Xcode). For limited SwiftPM-based iOS cross-compilation from Linux, see [xtool](https://github.com/xtool-org/xtool).
+
+**Environment variables**:
+
+| Variable | Value |
+|----------|-------|
+| `JAVA_HOME` | `/usr/lib/jvm/java-openjdk` (symlink to latest LTS) |
+| `ANDROID_HOME` | `/opt/android-sdk` |
+| `GRADLE_HOME` | `/opt/gradle` |
+| `FLUTTER_HOME` | `/opt/flutter` |
 
 ### alpine-cross-platform
 
@@ -285,6 +333,11 @@ WORKDIR /workspace
 | .NET | 9.0 | via `apk` (Alpine packages) |
 | Go | latest stable | auto via `go.dev/VERSION` |
 | Rust | latest stable | auto via rustup |
+| OpenJDK | latest LTS | auto via `apk` (highest `openjdk*-jdk`) |
+| Android SDK | latest | auto via `sdkmanager` |
+| Flutter | latest stable | auto via Google API |
+| Gradle | latest stable | auto via Gradle API |
+| Node.js | latest LTS | via `apk` (Alpine packages) |
 | glibc sysroots | 2.28 | Anaconda conda-forge |
 | LLVM/Clang | latest | via `apk` (Alpine packages) |
 
