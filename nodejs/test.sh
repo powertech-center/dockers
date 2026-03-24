@@ -36,7 +36,7 @@ echo ""
 echo "--- TypeScript ---"
 check "tsc available"               tsc --version
 check "ts-node available"           ts-node --version
-check "ts-node runs TS"             ts-node -e "const x: number = 42; console.log(x)"
+check "ts-node runs TS"             ts-node --skip-project -O '{"module":"commonjs"}' -e "const x: number = 42; console.log(x)"
 
 # ── Linters & formatters ──
 echo ""
