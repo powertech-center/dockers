@@ -7,59 +7,59 @@ All images are published to `ghcr.io/powertech-center/`.
 
 ```
 alpine:latest
-  └── alpine-tools              base utilities
-        └── alpine-dev          build tools & scripting
-              ├── alpine-clang      LLVM/Clang (native host)
-              ├── alpine-csharp     .NET/C# (native host)
-              ├── alpine-go         Go toolchain (native host)
-              ├── alpine-rust       Rust toolchain (native host)
-              ├── alpine-nodejs     Node.js, TypeScript, JS/TS tooling
-              ├── alpine-mobile     Android SDK, Flutter, React Native
-              └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
-                    ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
-                    ├── alpine-cross-csharp   .NET/C# NativeAOT (cross)
-                    ├── alpine-cross-go       Go toolchain (cross)
-                    └── alpine-cross-rust     Rust toolchain (cross)
+  └── alpine/tools              base utilities
+        └── alpine/dev          build tools & scripting
+              ├── alpine/clang      LLVM/Clang (native host)
+              ├── alpine/csharp     .NET/C# (native host)
+              ├── alpine/go         Go toolchain (native host)
+              ├── alpine/rust       Rust toolchain (native host)
+              ├── alpine/nodejs     Node.js, TypeScript, JS/TS tooling
+              ├── alpine/mobile     Android SDK, Flutter, React Native
+              └── alpine/cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
+                    ├── alpine/cross-clang    LLVM/Clang toolchain (cross)
+                    ├── alpine/cross-csharp   .NET/C# NativeAOT (cross)
+                    ├── alpine/cross-go       Go toolchain (cross)
+                    └── alpine/cross-rust     Rust toolchain (cross)
 ```
 
 ## Images
 
-### alpine-tools
+### alpine/tools
 
 Base image with common utilities. Changes rarely.
 
 ```
-ghcr.io/powertech-center/alpine-tools:latest
+ghcr.io/powertech-center/alpine/tools:latest
 ```
 
 Includes: bash, git, wget, curl, tar, xz, zip, unzip, p7zip, jq, grep, sed, nano, openssh-client, ca-certificates.
 
-### alpine-dev
+### alpine/dev
 
 Native development tools and scripting environments.
 
 ```
-ghcr.io/powertech-center/alpine-dev:latest
+ghcr.io/powertech-center/alpine/dev:latest
 ```
 
 Adds: make, cmake, ninja, gcc, g++, musl-dev, pkgconf, python3, pip, pwsh, musl from git master (provides `posix_getdents` for Claude Code), [crossler](https://github.com/powertech-center/crossler), user `dev`.
 
-### alpine-clang
+### alpine/clang
 
 Native LLVM/Clang development environment (host compilation only).
 
 ```
-ghcr.io/powertech-center/alpine-clang:latest
+ghcr.io/powertech-center/alpine/clang:latest
 ```
 
 Adds: clang, clang-dev, lld, llvm-dev, llvm-static, compiler-rt.
 
-### alpine-csharp
+### alpine/csharp
 
 Native .NET/C# development environment with NativeAOT support (host compilation only).
 
 ```
-ghcr.io/powertech-center/alpine-csharp:latest
+ghcr.io/powertech-center/alpine/csharp:latest
 ```
 
 Adds: .NET 9 SDK, zlib-dev (NativeAOT dependency), dev tools (csharpier, dotnet-outdated, reportgenerator).
@@ -70,37 +70,37 @@ NativeAOT compiles C# to native ELF binaries on the host:
 dotnet publish -r linux-musl-x64 -p:PublishAot=true
 ```
 
-### alpine-go
+### alpine/go
 
 Native Go development environment (host compilation only).
 
 ```
-ghcr.io/powertech-center/alpine-go:latest
+ghcr.io/powertech-center/alpine/go:latest
 ```
 
-Adds: Go toolchain (latest stable). `CGO_ENABLED=1` works out of the box via the gcc inherited from alpine-dev.
+Adds: Go toolchain (latest stable). `CGO_ENABLED=1` works out of the box via the gcc inherited from alpine/dev.
 
-### alpine-rust
+### alpine/rust
 
 Native Rust development environment (host compilation only).
 
 ```
-ghcr.io/powertech-center/alpine-rust:latest
+ghcr.io/powertech-center/alpine/rust:latest
 ```
 
 Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit.
 
-### alpine-nodejs
+### alpine/nodejs
 
 Universal JavaScript/TypeScript development environment. Suitable for CI/CD and as a VS Code Dev Container.
 
 ```
-ghcr.io/powertech-center/alpine-nodejs:latest
+ghcr.io/powertech-center/alpine/nodejs:latest
 ```
 
 Adds: Node.js LTS, npm, yarn, pnpm, TypeScript, ts-node, ESLint, Prettier.
 
-Native npm modules (node-gyp) compile out of the box — gcc, g++, make, python3 are inherited from alpine-dev.
+Native npm modules (node-gyp) compile out of the box — gcc, g++, make, python3 are inherited from alpine/dev.
 
 ```bash
 # TypeScript project
@@ -117,12 +117,12 @@ eslint src/
 prettier --write src/
 ```
 
-### alpine-mobile
+### alpine/mobile
 
 Universal mobile development environment for Android, Flutter, and React Native.
 
 ```
-ghcr.io/powertech-center/alpine-mobile:latest
+ghcr.io/powertech-center/alpine/mobile:latest
 ```
 
 Adds: gcompat (glibc shim), OpenJDK (latest LTS), Android SDK (cmdline-tools, build-tools, platform-tools, platforms, NDK), Gradle, Node.js LTS, npm, yarn, pnpm, Flutter SDK, Dart SDK.
@@ -164,12 +164,12 @@ npx react-native build-android --mode=release
 | `GRADLE_HOME` | `/opt/gradle` |
 | `FLUTTER_HOME` | `/opt/flutter` |
 
-### alpine-cross-platform
+### alpine/cross-platform
 
 Cross-compilation infrastructure for 10 targets (Linux musl + glibc, macOS, Windows MSVC + GNU, each x64/arm64).
 
 ```
-ghcr.io/powertech-center/alpine-cross-platform:latest
+ghcr.io/powertech-center/alpine/cross-platform:latest
 ```
 
 Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (static), compiler-rt, macOS SDK, Windows MSVC SDK (xwin), Windows GNU sysroot (llvm-mingw), smart compiler/linker wrapper scripts.
@@ -208,15 +208,15 @@ Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (stat
 | aarch64 glibc sysroot | `/usr/aarch64-linux-gnu` |
 | macOS SDK env var | `SDKROOT=/usr/macosx.sdk` |
 
-### alpine-cross-clang
+### alpine/cross-clang
 
 LLVM/Clang development and cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-cross-clang:latest
+ghcr.io/powertech-center/alpine/cross-clang:latest
 ```
 
-Inherits all 10-target cross-compilation infrastructure from alpine-cross-platform. Adds LLVM/Clang development libraries for C/C++ work:
+Inherits all 10-target cross-compilation infrastructure from alpine/cross-platform. Adds LLVM/Clang development libraries for C/C++ work:
 
 - `clang-dev` — libclang headers and libraries (for tools using libclang API)
 - `llvm-dev` — LLVM headers and libraries (for custom passes, LLVM-based tools)
@@ -225,12 +225,12 @@ Inherits all 10-target cross-compilation infrastructure from alpine-cross-platfo
 
 Use this image when developing C/C++ projects that need cross-compilation or when building LLVM-based tools.
 
-### alpine-cross-csharp
+### alpine/cross-csharp
 
 .NET/C# development and NativeAOT cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-cross-csharp:latest
+ghcr.io/powertech-center/alpine/cross-csharp:latest
 ```
 
 Adds: .NET 9 SDK, zlib-dev, dev tools (csharpier, dotnet-outdated, reportgenerator).
@@ -263,12 +263,12 @@ dotnet publish -r osx-arm64 --self-contained
 
 **Important**: Always pass `-p:LinkerFlavor=lld` for cross-architecture builds. NativeAOT defaults to `-fuse-ld=bfd` which only supports x86_64.
 
-### alpine-cross-go
+### alpine/cross-go
 
 Go development and cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-cross-go:latest
+ghcr.io/powertech-center/alpine/cross-go:latest
 ```
 
 Adds: Go toolchain (latest stable). 6 CGO targets (Linux musl, macOS, Windows GNU). Smart wrappers handle everything — just set `CC`:
@@ -287,12 +287,12 @@ GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=clang-x86_64-windows-gnu go build ./.
 GOOS=windows GOARCH=arm64 CGO_ENABLED=1 CC=clang-aarch64-windows-gnu go build ./...
 ```
 
-### alpine-cross-rust
+### alpine/cross-rust
 
 Rust development and cross-compilation environment.
 
 ```
-ghcr.io/powertech-center/alpine-cross-rust:latest
+ghcr.io/powertech-center/alpine/cross-rust:latest
 ```
 
 Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit, llvm-lib (MSVC archiver).
@@ -319,14 +319,14 @@ cargo build --release --target aarch64-pc-windows-msvc
 make all
 
 # Build a specific image (dependencies are resolved automatically)
-make alpine-go
-make alpine-cross-go
+make build-alpine/go
+make build-alpine/cross-go
 
-# Run tests for all cross-compilation images
+# Run tests for all images
 make test
 
 # Run tests for a specific image
-make test-alpine-cross-platform
+make test-alpine/cross-platform
 
 # Push all images to ghcr.io
 make push
@@ -340,7 +340,7 @@ make clean
 Inherit from the appropriate language image and add project-specific dependencies:
 
 ```dockerfile
-FROM ghcr.io/powertech-center/alpine-cross-go:latest
+FROM ghcr.io/powertech-center/alpine/cross-go:latest
 
 # Project-specific dev libraries
 RUN apk add --no-cache alsa-lib-dev libx11-dev gtk+3.0-dev
