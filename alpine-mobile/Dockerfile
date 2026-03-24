@@ -4,16 +4,20 @@
 # Image: ghcr.io/powertech-center/alpine-mobile
 #
 # Key design decisions:
+# - Inherits from alpine-nodejs (not alpine-dev) purely as a build optimization:
+#   React Native requires the full Node.js toolchain, so inheriting avoids
+#   duplicating ~100+ MB of identical layers. For the user, alpine-nodejs and
+#   alpine-mobile are independent peer images — do NOT reflect this dependency
+#   in README.md or public documentation.
 # - Android SDK tools are glibc-linked binaries; Alpine uses musl
 # - gcompat + glibc dynamic linker provide the compatibility layer
 # - JDK (latest LTS) from Alpine repos is musl-native (no shim needed)
-# - Node.js from Alpine repos is musl-native
 # - Flutter SDK requires glibc compat (Dart runtime is glibc-linked)
 #
 # iOS note: Full iOS development requires macOS (Xcode).
 # For limited iOS cross-compilation from Linux, see: https://github.com/nicklama/xtool
 
-FROM ghcr.io/powertech-center/alpine-dev:latest
+FROM ghcr.io/powertech-center/alpine-nodejs:latest
 
 # ── glibc compatibility layer ──────────────────────────────────────────────────
 # Android SDK and Flutter/Dart binaries are linked against glibc.
@@ -90,11 +94,6 @@ RUN GRADLE_VERSION=$(wget -qO- "https://services.gradle.org/versions/current" | 
     rm /tmp/gradle.zip
 
 ENV GRADLE_HOME=/opt/gradle
-
-# ── Node.js LTS & package managers (musl-native) ──────────────────────────────
-# For React Native, Expo, and general JS/TS mobile tooling
-RUN apk add --no-cache nodejs npm && \
-    npm install -g yarn pnpm
 
 # ── Flutter SDK (latest stable, auto-detected) ────────────────────────────────
 ENV FLUTTER_HOME=/opt/flutter

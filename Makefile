@@ -9,7 +9,12 @@
 #                 ├── alpine-go         (Go toolchain, native host)
 #                 ├── alpine-rust       (Rust toolchain, native host)
 #                 ├── alpine-csharp     (.NET SDK + NativeAOT, native host)
-#                 ├── alpine-mobile     (Android SDK, Flutter, React Native)
+#                 ├── alpine-nodejs     (Node.js, TypeScript, JS/TS tooling)
+#                 │     └── alpine-mobile     (Android SDK, Flutter, React Native)
+#                 │           NOTE: alpine-mobile inherits from alpine-nodejs purely
+#                 │           as a build optimization (reuses Node.js layers needed
+#                 │           for React Native). For the user, these are independent
+#                 │           peer images. Do NOT reflect this dependency in README.md.
 #                 └── alpine-cross-platform  (clang wrappers, macOS SDK, xwin)
 #                       ├── alpine-cross-clang    (LLVM/Clang toolchain + dev libs)
 #                       ├── alpine-cross-go       (Go toolchain)
@@ -18,8 +23,8 @@
 
 REGISTRY := ghcr.io/powertech-center
 
-IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-csharp alpine-mobile alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-cross-csharp
-TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-csharp alpine-cross-csharp alpine-mobile
+IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-csharp alpine-nodejs alpine-mobile alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-cross-csharp
+TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-csharp alpine-cross-csharp alpine-nodejs alpine-mobile
 BUILD_TARGETS  := $(IMAGES)
 CLEAN_TARGETS  := $(addprefix clean-,$(IMAGES))
 PUSH_TARGETS   := $(addprefix push-,$(IMAGES))
@@ -46,7 +51,8 @@ $(eval $(call BUILD_template,alpine-cross-platform,alpine-dev))
 $(eval $(call BUILD_template,alpine-cross-clang,alpine-cross-platform))
 $(eval $(call BUILD_template,alpine-cross-go,alpine-cross-platform))
 $(eval $(call BUILD_template,alpine-csharp,alpine-dev))
-$(eval $(call BUILD_template,alpine-mobile,alpine-dev))
+$(eval $(call BUILD_template,alpine-nodejs,alpine-dev))
+$(eval $(call BUILD_template,alpine-mobile,alpine-nodejs))
 $(eval $(call BUILD_template,alpine-cross-rust,alpine-cross-platform))
 $(eval $(call BUILD_template,alpine-cross-csharp,alpine-cross-platform))
 

@@ -13,6 +13,7 @@ alpine:latest
               ├── alpine-csharp     .NET/C# (native host)
               ├── alpine-go         Go toolchain (native host)
               ├── alpine-rust       Rust toolchain (native host)
+              ├── alpine-nodejs     Node.js, TypeScript, JS/TS tooling
               ├── alpine-mobile     Android SDK, Flutter, React Native
               └── alpine-cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
                     ├── alpine-cross-clang    LLVM/Clang toolchain (cross)
@@ -88,6 +89,33 @@ ghcr.io/powertech-center/alpine-rust:latest
 ```
 
 Adds: Rust (via rustup, stable), rustfmt, clippy, cargo-audit.
+
+### alpine-nodejs
+
+Universal JavaScript/TypeScript development environment. Suitable for CI/CD and as a VS Code Dev Container.
+
+```
+ghcr.io/powertech-center/alpine-nodejs:latest
+```
+
+Adds: Node.js LTS, npm, yarn, pnpm, TypeScript, ts-node, ESLint, Prettier.
+
+Native npm modules (node-gyp) compile out of the box — gcc, g++, make, python3 are inherited from alpine-dev.
+
+```bash
+# TypeScript project
+cd /workspace/my-project
+npm install
+npx tsc --build
+npm test
+
+# Run .ts files directly
+ts-node src/index.ts
+
+# Lint & format
+eslint src/
+prettier --write src/
+```
 
 ### alpine-mobile
 
@@ -333,11 +361,12 @@ WORKDIR /workspace
 | .NET | 9.0 | via `apk` (Alpine packages) |
 | Go | latest stable | auto via `go.dev/VERSION` |
 | Rust | latest stable | auto via rustup |
-| OpenJDK | latest LTS | auto via `apk` (highest `openjdk*-jdk`) |
+| Node.js | latest LTS | via `apk` (Alpine packages) |
+| TypeScript | latest stable | via `npm install -g` |
+| OpenJDK | latest compatible LTS | auto via `apk` + Gradle compatibility check |
 | Android SDK | latest | auto via `sdkmanager` |
 | Flutter | latest stable | auto via Google API |
 | Gradle | latest stable | auto via Gradle API |
-| Node.js | latest LTS | via `apk` (Alpine packages) |
 | glibc sysroots | 2.28 | Anaconda conda-forge |
 | LLVM/Clang | latest | via `apk` (Alpine packages) |
 
