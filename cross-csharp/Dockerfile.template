@@ -1,18 +1,13 @@
 # PowerTech Alpine C#
-# .NET development and cross-compilation environment
+# .NET development and NativeAOT cross-compilation environment
 #
-# NativeAOT cross-compilation targets (native binaries via clang wrappers):
-#   linux-musl-x64      — native host (no cross needed)
-#   linux-musl-arm64    — aarch64 musl sysroot + clang wrapper
-#   linux-x64           — x86_64 glibc sysroot + clang wrapper
-#   linux-arm64         — aarch64 glibc sysroot + clang wrapper
+# NativeAOT cross-compilation targets (8 native binary targets):
+#   Linux:   linux-musl-x64, linux-musl-arm64, linux-x64, linux-arm64
+#   macOS:   osx-x64, osx-arm64
+#   Windows: win-x64, win-arm64
 #
-# Standard `dotnet publish` targets (managed IL, no native linker needed):
-#   All .NET RIDs including win-x64, win-arm64, osx-x64, osx-arm64
-#
-# NativeAOT to Windows/macOS is NOT supported by .NET — those targets require
-# native platform toolchains (MSVC link.exe / Apple ld64).
-# Use standard `dotnet publish` (self-contained, ReadyToRun) for those platforms.
+# Standard `dotnet publish` targets (managed IL):
+#   All .NET RIDs including all of the above
 #
 # Image: ghcr.io/powertech-center/alpine/cross-csharp
 
@@ -30,42 +25,70 @@ ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/dev-tools-csharp.sh
 
+# Pre-fetch NativeAOT ILC runtime packages for all 8 cross-compilation targets.
+# This adds ~150 MB to the image but makes `dotnet publish -p:PublishAot=true`
+# work instantly for any target without downloading packages at build time.
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/csharp-prefetch.sh \
+        linux-musl-x64 linux-musl-arm64 \
+        linux-x64 linux-arm64 \
+        osx-x64 osx-arm64 \
+        win-x64 win-arm64
+
 # =============================================================================
 # NativeAOT cross-compilation environment
 #
 # .NET NativeAOT uses a C linker to produce the final native binary.
-# MSBuild properties that control this:
-#   CppCompilerAndLinker — the C compiler/linker binary (e.g., clang wrapper)
-#   SysRoot              — sysroot path for target platform headers/libs
-#   LinkerFlavor         — linker type: lld (required for cross-arch, our wrappers use lld)
-#   ObjCopyName          — objcopy tool for symbol stripping
-#   StripSymbols         — whether to strip debug symbols
+# All sysroots and clang/lld wrappers are inherited from alpine/cross-platform.
 #
-# IMPORTANT: Always pass -p:LinkerFlavor=lld for cross-architecture builds.
+# Linux targets use MSBuild Unix.targets (CppCompilerAndLinker + SysRoot):
+#   dotnet publish -r <rid> -p:PublishAot=true \
+#     -p:CppCompilerAndLinker=<clang-wrapper> \
+#     -p:SysRoot=<sysroot> \
+#     -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+#
+# macOS targets use MSBuild Unix.targets (CppCompilerAndLinker + SysRoot):
+#   dotnet publish -r <rid> -p:PublishAot=true \
+#     -p:DisableUnsupportedError=true \
+#     -p:CppCompilerAndLinker=<clang-wrapper> \
+#     -p:SysRoot=<sysroot> \
+#     -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
+#
+# Windows targets use MSBuild Windows.targets (CppLinker = lld-link wrapper):
+#   dotnet publish -r <rid> -p:PublishAot=true \
+#     -p:DisableUnsupportedError=true \
+#     -p:CppLinker=<lld-wrapper> \
+#     -p:IlcUseEnvironmentalTools=true \
+#     -p:StripSymbols=false \
+#     -p:EnableSourceLink=false
+#
+# Examples:
+#
+#   # Linux arm64 musl
+#   dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
+#     -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
+#     -p:SysRoot=/usr/aarch64-alpine-linux-musl \
+#     -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+#
+#   # macOS arm64
+#   dotnet publish -r osx-arm64 -p:PublishAot=true \
+#     -p:DisableUnsupportedError=true \
+#     -p:CppCompilerAndLinker=clang-aarch64-apple-darwin \
+#     -p:SysRoot=/usr/macosx.sdk \
+#     -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
+#
+#   # Windows x64
+#   dotnet publish -r win-x64 -p:PublishAot=true \
+#     -p:DisableUnsupportedError=true \
+#     -p:CppLinker=lld-x86_64-windows-msvc \
+#     -p:IlcUseEnvironmentalTools=true \
+#     -p:StripSymbols=false -p:EnableSourceLink=false
+#
+# IMPORTANT: Always pass -p:LinkerFlavor=lld for cross-architecture Linux builds.
 # NativeAOT defaults to -fuse-ld=bfd which invokes the host ld.bfd — that only
 # supports x86_64. Our clang wrappers already use -fuse-ld=lld internally, but
 # NativeAOT injects -fuse-ld=bfd before our wrapper runs, overriding it.
 # LinkerFlavor=lld tells NativeAOT to pass -fuse-ld=lld instead.
-#
-# Usage (NativeAOT cross-compile to Linux arm64 musl):
-#   dotnet publish -r linux-musl-arm64 \
-#     -p:PublishAot=true \
-#     -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
-#     -p:SysRoot=/usr/aarch64-alpine-linux-musl \
-#     -p:LinkerFlavor=lld \
-#     -p:ObjCopyName=llvm-objcopy
-#
-# Usage (NativeAOT cross-compile to Linux x64 glibc):
-#   dotnet publish -r linux-x64 \
-#     -p:PublishAot=true \
-#     -p:CppCompilerAndLinker=clang-x86_64-linux-gnu \
-#     -p:SysRoot=/usr/x86_64-linux-gnu \
-#     -p:LinkerFlavor=lld \
-#     -p:ObjCopyName=llvm-objcopy
-#
-# Usage (standard publish for Windows/macOS — managed IL, not NativeAOT):
-#   dotnet publish -r win-x64 --self-contained
-#   dotnet publish -r osx-arm64 --self-contained
 # =============================================================================
 
 # Default ObjCopyName for all NativeAOT builds (Alpine ships GNU objcopy)

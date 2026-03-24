@@ -62,9 +62,9 @@ Native .NET/C# development environment with NativeAOT support (host compilation 
 ghcr.io/powertech-center/alpine/csharp:latest
 ```
 
-Adds: .NET 9 SDK, zlib-dev (NativeAOT dependency), dev tools (csharpier, dotnet-outdated, reportgenerator).
+Adds: .NET 9 SDK, zlib-dev (NativeAOT dependency), dev tools (csharpier, dotnet-outdated, reportgenerator), pre-cached ILC runtime for `linux-musl-x64`.
 
-NativeAOT compiles C# to native ELF binaries on the host:
+NativeAOT compiles C# to native ELF binaries on the host — no package download needed on first build:
 
 ```bash
 dotnet publish -r linux-musl-x64 -p:PublishAot=true
@@ -194,10 +194,6 @@ Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (stat
 | Windows x64 GNU | `clang-x86_64-windows-gnu` | `clang++-x86_64-windows-gnu` | `lld-x86_64-windows-gnu` |
 | Windows arm64 GNU | `clang-aarch64-windows-gnu` | `clang++-aarch64-windows-gnu` | `lld-aarch64-windows-gnu` |
 
-**Windows MSVC** (`clang-*-windows-msvc`): clang in MSVC-compatible mode (`--driver-mode=cl`). Uses xwin SDK/CRT includes (`/imsvc`). For Rust cross-compilation.
-
-**Windows GNU** (`clang-*-windows-gnu`): clang with `--target=*-pc-windows-gnu` and native MinGW sysroot (mingw-w64 headers + CRT from llvm-mingw). Static libc++ by default. For Go CGO cross-compilation.
-
 | Component | Path |
 |-----------|------|
 | Windows MSVC SDK & CRT (xwin) | `/usr/windows-msvc` |
@@ -233,35 +229,47 @@ Use this image when developing C/C++ projects that need cross-compilation or whe
 ghcr.io/powertech-center/alpine/cross-csharp:latest
 ```
 
-Adds: .NET 9 SDK, zlib-dev, dev tools (csharpier, dotnet-outdated, reportgenerator).
+Adds: .NET 9 SDK, zlib-dev, dev tools (csharpier, dotnet-outdated, reportgenerator), pre-cached ILC runtimes for all 8 NativeAOT targets.
 
-NativeAOT cross-compiles C# to native Linux binaries for 4 targets. Standard `dotnet publish` (managed IL) works for all RIDs including Windows and macOS.
+NativeAOT cross-compiles C# to native binaries for 8 targets: Linux, macOS, and Windows — no package download needed on first build. Standard `dotnet publish` (managed IL) works for all RIDs.
 
 ```bash
-# NativeAOT cross-compilation (native binaries)
+# Linux (CppCompilerAndLinker + SysRoot)
 dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
   -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
   -p:SysRoot=/usr/aarch64-alpine-linux-musl \
   -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
 
-dotnet publish -r linux-x64 -p:PublishAot=true \
-  -p:CppCompilerAndLinker=clang-x86_64-linux-gnu \
-  -p:SysRoot=/usr/x86_64-linux-gnu \
-  -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+# macOS (CppCompilerAndLinker + SysRoot + DisableUnsupportedError)
+dotnet publish -r osx-arm64 -p:PublishAot=true \
+  -p:DisableUnsupportedError=true \
+  -p:CppCompilerAndLinker=clang-aarch64-apple-darwin \
+  -p:SysRoot=/usr/macosx.sdk \
+  -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
 
-# Standard publish for Windows/macOS (managed IL, not NativeAOT)
-dotnet publish -r win-x64 --self-contained
-dotnet publish -r osx-arm64 --self-contained
+# Windows (CppLinker = lld-link wrapper, MSVC-style linking)
+dotnet publish -r win-x64 -p:PublishAot=true \
+  -p:DisableUnsupportedError=true \
+  -p:CppLinker=lld-x86_64-windows-msvc \
+  -p:IlcUseEnvironmentalTools=true \
+  -p:StripSymbols=false -p:EnableSourceLink=false
 ```
 
-| NativeAOT Target | RID | CppCompilerAndLinker | SysRoot |
-|------------------|-----|---------------------|---------|
+| NativeAOT Target | RID | Compiler/Linker | SysRoot |
+|------------------|-----|-----------------|---------|
 | Linux x64 (musl) | `linux-musl-x64` | `clang-x86_64-linux-musl` | `/` |
 | Linux arm64 (musl) | `linux-musl-arm64` | `clang-aarch64-linux-musl` | `/usr/aarch64-alpine-linux-musl` |
 | Linux x64 (glibc) | `linux-x64` | `clang-x86_64-linux-gnu` | `/usr/x86_64-linux-gnu` |
 | Linux arm64 (glibc) | `linux-arm64` | `clang-aarch64-linux-gnu` | `/usr/aarch64-linux-gnu` |
+| macOS x64 | `osx-x64` | `clang-x86_64-apple-darwin` | `/usr/macosx.sdk` |
+| macOS arm64 | `osx-arm64` | `clang-aarch64-apple-darwin` | `/usr/macosx.sdk` |
+| Windows x64 | `win-x64` | `lld-x86_64-windows-msvc` | (built into wrapper) |
+| Windows arm64 | `win-arm64` | `lld-aarch64-windows-msvc` | (built into wrapper) |
 
-**Important**: Always pass `-p:LinkerFlavor=lld` for cross-architecture builds. NativeAOT defaults to `-fuse-ld=bfd` which only supports x86_64.
+**Notes**:
+- Always pass `-p:LinkerFlavor=lld` for cross-architecture Linux builds. NativeAOT defaults to `-fuse-ld=bfd` which only supports x86_64.
+- macOS and Windows targets require `-p:DisableUnsupportedError=true` (cross-OS NativeAOT is blocked by MSBuild policy, not by technical limitations — ILC generates COFF/Mach-O natively via LLVM).
+- Windows targets use `CppLinker` (not `CppCompilerAndLinker`) because NativeAOT's Windows.targets passes MSVC-style flags (`/OUT:`, `/SUBSYSTEM:`) directly to the linker.
 
 ### alpine/cross-go
 

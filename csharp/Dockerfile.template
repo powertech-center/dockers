@@ -18,4 +18,9 @@ ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/dev-tools-csharp.sh
 
+# Pre-fetch NativeAOT ILC runtime package for the host target.
+# Makes `dotnet publish -p:PublishAot=true` work without downloading at build time.
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/csharp-prefetch.sh linux-musl-x64
+
 CMD ["/bin/sh"]

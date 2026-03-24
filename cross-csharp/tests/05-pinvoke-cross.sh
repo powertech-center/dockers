@@ -1,12 +1,16 @@
 #!/bin/sh
 # 05-pinvoke-cross.sh — NativeAOT with P/Invoke (C interop) cross-compilation
+#
+# Tests libc P/Invoke (getpid) for Linux targets only.
+# Windows/macOS NativeAOT compilation is verified in 03-native-aot-cross.sh.
+# The hello_pinvoke project uses libc's getpid() which is Linux-specific.
 . "$(dirname "$0")/helpers.sh"
 
 echo "=== NativeAOT P/Invoke cross-compilation ==="
 
 PROJECT="$SRCDIR/hello_pinvoke"
 
-for entry in $AOT_TARGETS; do
+for entry in $AOT_LINUX_TARGETS; do
     rid=$(echo "$entry" | cut -d: -f1)
     compiler=$(echo "$entry" | cut -d: -f2)
     sysroot=$(echo "$entry" | cut -d: -f3)

@@ -23,14 +23,33 @@ else
     _GREEN='' _RED='' _YELLOW='' _BOLD='' _RESET=''
 fi
 
-# NativeAOT cross-compilation targets
+# NativeAOT cross-compilation targets (Linux)
 # Format: "rid:compiler:sysroot"
-AOT_TARGETS="
+AOT_LINUX_TARGETS="
     linux-musl-x64:clang-x86_64-linux-musl:/
     linux-musl-arm64:clang-aarch64-linux-musl:/usr/aarch64-alpine-linux-musl
     linux-x64:clang-x86_64-linux-gnu:/usr/x86_64-linux-gnu
     linux-arm64:clang-aarch64-linux-gnu:/usr/aarch64-linux-gnu
 "
+
+# NativeAOT cross-compilation targets (macOS)
+# Format: "rid:compiler:sysroot"
+# Uses Unix.targets — CppCompilerAndLinker works directly
+AOT_MACOS_TARGETS="
+    osx-x64:clang-x86_64-apple-darwin:/usr/macosx.sdk
+    osx-arm64:clang-aarch64-apple-darwin:/usr/macosx.sdk
+"
+
+# NativeAOT cross-compilation targets (Windows)
+# Format: "rid:linker:arch"
+# Uses Windows.targets — CppLinker must be lld-link compatible, not clang wrapper
+AOT_WINDOWS_TARGETS="
+    win-x64:lld-x86_64-windows-msvc:x86_64
+    win-arm64:lld-aarch64-windows-msvc:aarch64
+"
+
+# All NativeAOT targets combined (Linux + macOS use same format: rid:compiler:sysroot)
+AOT_TARGETS="$AOT_LINUX_TARGETS $AOT_MACOS_TARGETS"
 
 # Standard publish targets (managed IL, no NativeAOT)
 PUBLISH_TARGETS="

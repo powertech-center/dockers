@@ -262,6 +262,9 @@ def generate(target_name, sysroot, cpp):
         lines.append('    for arg in "$@"; do')
         lines.append('        case "$arg" in')
         lines.append("            -fuse-ld=lld) ;;")
+        if kind == "darwin":
+            # -ld_classic is Apple ld-specific; lld doesn't support it
+            lines.append("            -ld_classic)  ;;")
         lines.append('            *)            args="$args $arg" ;;')
         lines.append("        esac")
         lines.append("    done")
