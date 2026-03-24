@@ -1,9 +1,9 @@
 # PowerTech Alpine Dev
 # Build tools, compilers and scripting environments for native development
 #
-# Image: ghcr.io/powertech-center/alpine-dev
+# Image: ghcr.io/powertech-center/alpine/dev
 
-FROM ghcr.io/powertech-center/alpine-tools:latest
+FROM ghcr.io/powertech-center/alpine/tools:latest
 
 RUN apk add --no-cache \
     make \

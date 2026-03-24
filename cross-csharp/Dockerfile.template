@@ -14,9 +14,9 @@
 # native platform toolchains (MSVC link.exe / Apple ld64).
 # Use standard `dotnet publish` (self-contained, ReadyToRun) for those platforms.
 #
-# Image: ghcr.io/powertech-center/alpine-cross-csharp
+# Image: ghcr.io/powertech-center/alpine/cross-csharp
 
-FROM ghcr.io/powertech-center/alpine-cross-platform:latest
+FROM ghcr.io/powertech-center/alpine/cross-platform:latest
 
 # Install .NET SDK and NativeAOT dependencies
 RUN --mount=type=bind,source=shared,target=/tmp/shared \

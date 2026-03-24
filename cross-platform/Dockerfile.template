@@ -10,7 +10,7 @@
 #   Stage 3: LLVM runtimes — compiler-rt builtins + libc++ (static) for 6 targets
 #   Stage 4: Compiler and linker wrappers for all 10 cross-compilation targets
 #
-# Image: ghcr.io/powertech-center/alpine-cross-platform
+# Image: ghcr.io/powertech-center/alpine/cross-platform
 
 # =============================================================================
 # Stage 1: Base cross-compilation environment
@@ -18,7 +18,7 @@
 # Windows GNU sysroot (llvm-mingw), and aarch64 musl sysroot.
 # All SDK versions are auto-detected from GitHub releases (latest stable).
 # =============================================================================
-FROM ghcr.io/powertech-center/alpine-dev:latest
+FROM ghcr.io/powertech-center/alpine/dev:latest
 
 # clang — C/C++ cross-compiler for all targets (Linux, macOS, Windows)
 # lld   — linker suite: ld.lld (ELF/Linux), ld64.lld (Mach-O/macOS), lld-link (PE/Windows)

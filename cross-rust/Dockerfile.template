@@ -2,9 +2,9 @@
 # Rust development and cross-compilation environment
 # 8 cargo cross-compilation targets: Linux musl/gnu, macOS, Windows MSVC (x64/arm64 each)
 #
-# Image: ghcr.io/powertech-center/alpine-cross-rust
+# Image: ghcr.io/powertech-center/alpine/cross-rust
 
-FROM ghcr.io/powertech-center/alpine-cross-platform:latest
+FROM ghcr.io/powertech-center/alpine/cross-platform:latest
 
 ENV RUSTUP_HOME=/opt/rust/rustup
 ENV CARGO_HOME=/opt/rust/cargo

@@ -1,93 +1,123 @@
 # PowerTech Docker Images
 # Hierarchical build system for cross-compilation Docker images
 #
-# Hierarchy:
-#   alpine:latest
-#     └── alpine-tools          (wget, curl, git, zip, 7z, jq...)
-#           └── alpine-dev      (make, cmake, gcc, musl git master, dev user)
-#                 ├── alpine-clang      (LLVM/Clang, native host)
-#                 ├── alpine-go         (Go toolchain, native host)
-#                 ├── alpine-rust       (Rust toolchain, native host)
-#                 ├── alpine-csharp     (.NET SDK + NativeAOT, native host)
-#                 ├── alpine-nodejs     (Node.js, TypeScript, JS/TS tooling)
-#                 │     └── alpine-mobile     (Android SDK, Flutter, React Native)
-#                 │           NOTE: alpine-mobile inherits from alpine-nodejs purely
-#                 │           as a build optimization (reuses Node.js layers needed
-#                 │           for React Native). For the user, these are independent
-#                 │           peer images. Do NOT reflect this dependency in README.md.
-#                 └── alpine-cross-platform  (clang wrappers, macOS SDK, xwin)
-#                       ├── alpine-cross-clang    (LLVM/Clang toolchain + dev libs)
-#                       ├── alpine-cross-go       (Go toolchain)
-#                       ├── alpine-cross-rust     (Rust + cargo-audit)
-#                       └── alpine-cross-csharp   (.NET SDK + NativeAOT cross-compilation)
+# Hierarchy (per distro):
+#   <distro>:latest
+#     └── <distro>/tools          (wget, curl, git, zip, 7z, jq...)
+#           └── <distro>/dev      (make, cmake, gcc, musl git master, dev user)
+#                 ├── <distro>/clang      (LLVM/Clang, native host)
+#                 ├── <distro>/go         (Go toolchain, native host)
+#                 ├── <distro>/rust       (Rust toolchain, native host)
+#                 ├── <distro>/csharp     (.NET SDK + NativeAOT, native host)
+#                 ├── <distro>/nodejs     (Node.js, TypeScript, JS/TS tooling)
+#                 │     └── <distro>/mobile     (Android SDK, Flutter, React Native)
+#                 │           NOTE: mobile inherits from nodejs purely as a build
+#                 │           optimization (reuses Node.js layers needed for React
+#                 │           Native). For the user, these are independent peer images.
+#                 │           Do NOT reflect this dependency in README.md.
+#                 └── <distro>/cross-platform  (clang wrappers, macOS SDK, xwin)
+#                       ├── <distro>/cross-clang    (LLVM/Clang toolchain + dev libs)
+#                       ├── <distro>/cross-go       (Go toolchain)
+#                       ├── <distro>/cross-rust     (Rust + cargo-audit)
+#                       └── <distro>/cross-csharp   (.NET SDK + NativeAOT cross-compilation)
 
 REGISTRY := ghcr.io/powertech-center
+DISTROS  := alpine
+#DISTROS += debian ubuntu
+IMAGES   := tools dev clang go rust csharp nodejs mobile cross-platform cross-clang cross-go cross-rust cross-csharp
 
-IMAGES         := alpine-tools alpine-dev alpine-clang alpine-go alpine-rust alpine-csharp alpine-nodejs alpine-mobile alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-cross-csharp
-TESTABLE       := alpine-cross-platform alpine-cross-clang alpine-cross-go alpine-cross-rust alpine-csharp alpine-cross-csharp alpine-nodejs alpine-mobile
-BUILD_TARGETS  := $(IMAGES)
-CLEAN_TARGETS  := $(addprefix clean-,$(IMAGES))
-PUSH_TARGETS   := $(addprefix push-,$(IMAGES))
-TEST_TARGETS   := $(addprefix test-,$(TESTABLE))
+# Generate target lists for all distro/image combinations
+FULL_TARGETS  := $(foreach d,$(DISTROS),$(addprefix $(d)/,$(IMAGES)))
+BUILD_TARGETS := $(addprefix build-,$(FULL_TARGETS))
+TEST_TARGETS  := $(addprefix test-,$(FULL_TARGETS))
+PUSH_TARGETS  := $(addprefix push-,$(FULL_TARGETS))
+CLEAN_TARGETS := $(addprefix clean-,$(FULL_TARGETS))
 
-.PHONY: $(BUILD_TARGETS) all $(CLEAN_TARGETS) clean $(PUSH_TARGETS) push $(TEST_TARGETS) test
+.PHONY: all build test push clean \
+        $(FULL_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PUSH_TARGETS) $(CLEAN_TARGETS)
+
+# === Full targets: build → test → push (sequential) ===
+
+all: $(FULL_TARGETS)
+
+# For each distro/image, run build, then test, then push — in order.
+# Using recursive make to enforce sequencing within a single target.
+define FULL_template
+$(1)/$(2): build-$(1)/$(2)
+	@$$(MAKE) --no-print-directory test-$(1)/$(2)
+	@$$(MAKE) --no-print-directory push-$(1)/$(2)
+endef
+
+$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call FULL_template,$(d),$(img)))))
 
 # === Build targets (with dependency chain) ===
 
-all: $(BUILD_TARGETS)
+build: $(BUILD_TARGETS)
 
+# Args: 1=distro, 2=image, 3=build dependency (empty for root)
 define BUILD_template
-$(1): $(2)
-	@echo "Building $(REGISTRY)/$(1):latest..."
-	docker build -t $(REGISTRY)/$(1):latest -f $(1)/Dockerfile .
+build-$(1)/$(2): $(3)
+	@echo "Building $(REGISTRY)/$(1)/$(2):latest..."
+	@mkdir -p .cache/$(1)
+	@cp $(2)/Dockerfile.template .cache/$(1)/$(2)
+	docker build -t $(REGISTRY)/$(1)/$(2):latest -f .cache/$(1)/$(2) .
 endef
 
-$(eval $(call BUILD_template,alpine-tools,))
-$(eval $(call BUILD_template,alpine-dev,alpine-tools))
-$(eval $(call BUILD_template,alpine-clang,alpine-dev))
-$(eval $(call BUILD_template,alpine-go,alpine-dev))
-$(eval $(call BUILD_template,alpine-rust,alpine-dev))
-$(eval $(call BUILD_template,alpine-cross-platform,alpine-dev))
-$(eval $(call BUILD_template,alpine-cross-clang,alpine-cross-platform))
-$(eval $(call BUILD_template,alpine-cross-go,alpine-cross-platform))
-$(eval $(call BUILD_template,alpine-csharp,alpine-dev))
-$(eval $(call BUILD_template,alpine-nodejs,alpine-dev))
-$(eval $(call BUILD_template,alpine-mobile,alpine-nodejs))
-$(eval $(call BUILD_template,alpine-cross-rust,alpine-cross-platform))
-$(eval $(call BUILD_template,alpine-cross-csharp,alpine-cross-platform))
-
-# === Clean targets per image ===
-
-clean: $(CLEAN_TARGETS)
-
-define CLEAN_template
-clean-$(1):
-	@echo "Removing $(REGISTRY)/$(1):latest..."
-	docker rmi $(REGISTRY)/$(1):latest 2>/dev/null || true
+# Instantiate build targets for each distro
+define BUILD_all_for_distro
+$(eval $(call BUILD_template,$(1),tools,))
+$(eval $(call BUILD_template,$(1),dev,build-$(1)/tools))
+$(eval $(call BUILD_template,$(1),clang,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),go,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),rust,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),cross-platform,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),cross-clang,build-$(1)/cross-platform))
+$(eval $(call BUILD_template,$(1),cross-go,build-$(1)/cross-platform))
+$(eval $(call BUILD_template,$(1),csharp,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),nodejs,build-$(1)/dev))
+$(eval $(call BUILD_template,$(1),mobile,build-$(1)/nodejs))
+$(eval $(call BUILD_template,$(1),cross-rust,build-$(1)/cross-platform))
+$(eval $(call BUILD_template,$(1),cross-csharp,build-$(1)/cross-platform))
 endef
 
-$(foreach img,$(IMAGES),$(eval $(call CLEAN_template,$(img))))
+$(foreach d,$(DISTROS),$(eval $(call BUILD_all_for_distro,$(d))))
 
-# === Push targets per image ===
-
-push: $(PUSH_TARGETS)
-
-define PUSH_template
-push-$(1):
-	@echo "Pushing $(REGISTRY)/$(1):latest..."
-	docker push $(REGISTRY)/$(1):latest
-endef
-
-$(foreach img,$(IMAGES),$(eval $(call PUSH_template,$(img))))
-
-# === Test targets (only for images with test.sh) ===
+# === Test targets ===
 
 test: $(TEST_TARGETS)
 
 define TEST_template
-test-$(1):
-	@echo "Testing $(REGISTRY)/$(1):latest..."
-	docker run --rm -v ./$(1):/tests $(REGISTRY)/$(1):latest sh /tests/test.sh
+test-$(1)/$(2):
+	@if [ -f $(2)/test.sh ]; then \
+		echo "Testing $(REGISTRY)/$(1)/$(2):latest..."; \
+		docker run --rm -v ./$(2):/tests $(REGISTRY)/$(1)/$(2):latest sh /tests/test.sh; \
+	else \
+		echo "No tests defined for $(1)/$(2), skipping."; \
+	fi
 endef
 
-$(foreach img,$(TESTABLE),$(eval $(call TEST_template,$(img))))
+$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call TEST_template,$(d),$(img)))))
+
+# === Push targets ===
+
+push: $(PUSH_TARGETS)
+
+define PUSH_template
+push-$(1)/$(2):
+	@echo "Pushing $(REGISTRY)/$(1)/$(2):latest..."
+	docker push $(REGISTRY)/$(1)/$(2):latest
+endef
+
+$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call PUSH_template,$(d),$(img)))))
+
+# === Clean targets ===
+
+clean: $(CLEAN_TARGETS)
+
+define CLEAN_template
+clean-$(1)/$(2):
+	@echo "Removing $(REGISTRY)/$(1)/$(2):latest..."
+	docker rmi $(REGISTRY)/$(1)/$(2):latest 2>/dev/null || true
+endef
+
+$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call CLEAN_template,$(d),$(img)))))

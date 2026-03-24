@@ -1,7 +1,7 @@
 # PowerTech Alpine Mobile
 # Universal mobile development environment (Android, Flutter, React Native, KMP)
 #
-# Image: ghcr.io/powertech-center/alpine-mobile
+# Image: ghcr.io/powertech-center/alpine/mobile
 #
 # Key design decisions:
 # - Inherits from alpine-nodejs (not alpine-dev) purely as a build optimization:
@@ -17,7 +17,7 @@
 # iOS note: Full iOS development requires macOS (Xcode).
 # For limited iOS cross-compilation from Linux, see: https://github.com/nicklama/xtool
 
-FROM ghcr.io/powertech-center/alpine-nodejs:latest
+FROM ghcr.io/powertech-center/alpine/nodejs:latest
 
 # ── glibc compatibility layer ──────────────────────────────────────────────────
 # Android SDK and Flutter/Dart binaries are linked against glibc.

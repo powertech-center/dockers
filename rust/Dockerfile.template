@@ -1,9 +1,9 @@
 # PowerTech Alpine Rust (native)
 # Rust development environment for native (host) compilation
 #
-# Image: ghcr.io/powertech-center/alpine-rust
+# Image: ghcr.io/powertech-center/alpine/rust
 
-FROM ghcr.io/powertech-center/alpine-dev:latest
+FROM ghcr.io/powertech-center/alpine/dev:latest
 
 ENV RUSTUP_HOME=/opt/rust/rustup
 ENV CARGO_HOME=/opt/rust/cargo

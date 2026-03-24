@@ -1,0 +1,28 @@
+# PowerTech Alpine Node.js
+# Universal JavaScript/TypeScript development environment
+#
+# Image: ghcr.io/powertech-center/alpine/nodejs
+#
+# Key design decisions:
+# - Node.js from Alpine repos is musl-native (no glibc shim needed)
+# - Global tools: TypeScript, ESLint, Prettier — industry standard CLI tools
+# - Package managers: npm (built-in), yarn, pnpm — covers all lockfile formats
+# - Native addon support: node-gyp works via gcc/g++/make/python3 from alpine-dev
+
+FROM ghcr.io/powertech-center/alpine/dev:latest
+
+# ── Node.js LTS (musl-native, from Alpine packages) ─────────────────────────
+RUN apk add --no-cache nodejs npm
+
+# ── Package managers ─────────────────────────────────────────────────────────
+# yarn and pnpm — two major alternatives to npm, different projects use different ones
+RUN npm install -g yarn pnpm
+
+# ── TypeScript & dev tools ───────────────────────────────────────────────────
+# typescript: compiler (tsc) for .ts → .js
+# ts-node: run .ts files directly without pre-compilation
+# eslint: linter (standard in JS/TS ecosystem)
+# prettier: code formatter (standard in JS/TS ecosystem)
+RUN npm install -g typescript ts-node eslint prettier
+
+CMD ["/bin/sh"]

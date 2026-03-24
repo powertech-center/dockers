@@ -1,9 +1,9 @@
 # PowerTech Alpine Go (native)
 # Go development environment for native (host) compilation
 #
-# Image: ghcr.io/powertech-center/alpine-go
+# Image: ghcr.io/powertech-center/alpine/go
 
-FROM ghcr.io/powertech-center/alpine-dev:latest
+FROM ghcr.io/powertech-center/alpine/dev:latest
 
 # Install Go toolchain and set up GOPATH
 RUN --mount=type=bind,source=shared,target=/tmp/shared \

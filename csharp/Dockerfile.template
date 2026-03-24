@@ -2,9 +2,9 @@
 # .NET development environment for native (host) compilation
 # Includes NativeAOT support for producing fully native Linux binaries.
 #
-# Image: ghcr.io/powertech-center/alpine-csharp
+# Image: ghcr.io/powertech-center/alpine/csharp
 
-FROM ghcr.io/powertech-center/alpine-dev:latest
+FROM ghcr.io/powertech-center/alpine/dev:latest
 
 # Install .NET SDK and NativeAOT dependencies
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
