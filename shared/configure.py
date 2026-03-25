@@ -10,8 +10,8 @@ from jinja2 import Environment, FileSystemLoader
 
 DISTRO_PKG = {
     "alpine": "apk",
-    "debian": "apt",
-    "ubuntu": "apt",
+    "debian": "deb",
+    "ubuntu": "deb",
 }
 
 

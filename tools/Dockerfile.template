@@ -1,10 +1,17 @@
-# PowerTech Alpine Tools
+# PowerTech Tools
 # Base image with common utilities for development workflows
 #
-# Image: ghcr.io/powertech-center/alpine/tools
+# Image: ghcr.io/powertech-center/{{ distro }}/tools
 
+{% if distro == "alpine" -%}
 FROM alpine:latest
+{%- elif distro == "debian" -%}
+FROM debian:stable-slim
+{%- elif distro == "ubuntu" -%}
+FROM ubuntu:latest
+{%- endif %}
 
+{% if pkg == "apk" -%}
 RUN apk add --no-cache \
     bash \
     git \
@@ -26,5 +33,25 @@ RUN apk add --no-cache \
     htop \
     nano \
     openssh-client
+{%- elif pkg == "deb" -%}
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    git \
+    ca-certificates \
+    wget \
+    curl \
+    tar \
+    xz-utils \
+    zstd \
+    zip \
+    unzip \
+    p7zip-full \
+    jq \
+    tree \
+    htop \
+    nano \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+{%- endif %}
 
 CMD ["/bin/sh"]
