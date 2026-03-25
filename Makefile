@@ -21,103 +21,144 @@
 #                       ├── <distro>/cross-rust     (Rust + cargo-audit)
 #                       └── <distro>/cross-csharp   (.NET SDK + NativeAOT cross-compilation)
 
-REGISTRY := ghcr.io/powertech-center
-DISTROS  := alpine
-#DISTROS += debian ubuntu
-IMAGES   := tools dev clang go rust csharp nodejs mobile cross-platform cross-clang cross-go cross-rust cross-csharp
+REGISTRY  := ghcr.io/powertech-center
+DISTROS   := alpine debian ubuntu
+TEMPLATES := tools dev clang go rust csharp nodejs mobile cross-platform cross-clang cross-go cross-rust cross-csharp
 
-# Generate target lists for all distro/image combinations
-FULL_TARGETS  := $(foreach d,$(DISTROS),$(addprefix $(d)/,$(IMAGES)))
-BUILD_TARGETS := $(addprefix build-,$(FULL_TARGETS))
-TEST_TARGETS  := $(addprefix test-,$(FULL_TARGETS))
-PUSH_TARGETS  := $(addprefix push-,$(FULL_TARGETS))
-CLEAN_TARGETS := $(addprefix clean-,$(FULL_TARGETS))
+# ===========================================================================
+# 1. Base targets: <do>-<distro>/<template> — actual recipes
+# ===========================================================================
 
-.PHONY: all build test push clean \
-        $(FULL_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PUSH_TARGETS) $(CLEAN_TARGETS)
+# --- setup ---
 
-# === Full targets: build → test → push (sequential) ===
+setup:
+	@if command -v apk >/dev/null 2>&1; then \
+		apk add --no-cache py3-jinja2; \
+	elif command -v apt-get >/dev/null 2>&1; then \
+		apt-get install -y python3-jinja2; \
+	else \
+		pip install -r shared/requirements.txt; \
+	fi
 
-all: $(FULL_TARGETS)
+# --- build-<distro>/<template> ---
 
-# For each distro/image, run build, then test, then push — in order.
-# Using recursive make to enforce sequencing within a single target.
-define FULL_template
-$(1)/$(2): build-$(1)/$(2)
-	@$$(MAKE) --no-print-directory test-$(1)/$(2)
-	@$$(MAKE) --no-print-directory push-$(1)/$(2)
-endef
-
-$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call FULL_template,$(d),$(img)))))
-
-# === Build targets (with dependency chain) ===
-
-build: $(BUILD_TARGETS)
-
-# Args: 1=distro, 2=image, 3=build dependency (empty for root)
-define BUILD_template
+# Args: 1=distro, 2=template, 3=build dependency
+define rule_build
 build-$(1)/$(2): $(3)
 	@echo "Building $(REGISTRY)/$(1)/$(2):latest..."
-	@mkdir -p .cache/$(1)
-	@cp $(2)/Dockerfile.template .cache/$(1)/$(2)
+	@python shared/configure.py $(1) $(2)
 	docker build -t $(REGISTRY)/$(1)/$(2):latest -f .cache/$(1)/$(2) .
 endef
 
-# Instantiate build targets for each distro
-define BUILD_all_for_distro
-$(eval $(call BUILD_template,$(1),tools,))
-$(eval $(call BUILD_template,$(1),dev,build-$(1)/tools))
-$(eval $(call BUILD_template,$(1),clang,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),go,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),rust,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),cross-platform,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),cross-clang,build-$(1)/cross-platform))
-$(eval $(call BUILD_template,$(1),cross-go,build-$(1)/cross-platform))
-$(eval $(call BUILD_template,$(1),csharp,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),nodejs,build-$(1)/dev))
-$(eval $(call BUILD_template,$(1),mobile,build-$(1)/nodejs))
-$(eval $(call BUILD_template,$(1),cross-rust,build-$(1)/cross-platform))
-$(eval $(call BUILD_template,$(1),cross-csharp,build-$(1)/cross-platform))
+define rule_build_deps
+$(eval $(call rule_build,$(1),tools,setup))
+$(eval $(call rule_build,$(1),dev,build-$(1)/tools))
+$(eval $(call rule_build,$(1),clang,build-$(1)/dev))
+$(eval $(call rule_build,$(1),go,build-$(1)/dev))
+$(eval $(call rule_build,$(1),rust,build-$(1)/dev))
+$(eval $(call rule_build,$(1),cross-platform,build-$(1)/dev))
+$(eval $(call rule_build,$(1),cross-clang,build-$(1)/cross-platform))
+$(eval $(call rule_build,$(1),cross-go,build-$(1)/cross-platform))
+$(eval $(call rule_build,$(1),csharp,build-$(1)/dev))
+$(eval $(call rule_build,$(1),nodejs,build-$(1)/dev))
+$(eval $(call rule_build,$(1),mobile,build-$(1)/nodejs))
+$(eval $(call rule_build,$(1),cross-rust,build-$(1)/cross-platform))
+$(eval $(call rule_build,$(1),cross-csharp,build-$(1)/cross-platform))
 endef
 
-$(foreach d,$(DISTROS),$(eval $(call BUILD_all_for_distro,$(d))))
+$(foreach d,$(DISTROS),$(eval $(call rule_build_deps,$(d))))
 
-# === Test targets ===
+# --- cmd_test, cmd_push: reusable recipe bodies ---
 
-test: $(TEST_TARGETS)
-
-define TEST_template
-test-$(1)/$(2):
-	@if [ -f $(2)/test.sh ]; then \
-		echo "Testing $(REGISTRY)/$(1)/$(2):latest..."; \
-		docker run --rm -v ./$(2):/tests $(REGISTRY)/$(1)/$(2):latest sh /tests/test.sh; \
+define cmd_test
+	@if [ -f $(1)/test.sh ]; then \
+		echo "Testing $(REGISTRY)/$(2)/$(1):latest..."; \
+		docker run --rm -v ./$(1):/tests $(REGISTRY)/$(2)/$(1):latest sh /tests/test.sh; \
 	else \
-		echo "No tests defined for $(1)/$(2), skipping."; \
+		echo "No tests defined for $(2)/$(1), skipping."; \
 	fi
 endef
 
-$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call TEST_template,$(d),$(img)))))
-
-# === Push targets ===
-
-push: $(PUSH_TARGETS)
-
-define PUSH_template
-push-$(1)/$(2):
+define cmd_push
 	@echo "Pushing $(REGISTRY)/$(1)/$(2):latest..."
 	docker push $(REGISTRY)/$(1)/$(2):latest
 endef
 
-$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call PUSH_template,$(d),$(img)))))
+# --- test-<distro>/<template> ---
 
-# === Clean targets ===
+define rule_test
+test-$(1)/$(2):
+	$(call cmd_test,$(2),$(1))
+endef
 
-clean: $(CLEAN_TARGETS)
+$(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),$(eval $(call rule_test,$(d),$(t)))))
 
-define CLEAN_template
+# --- push-<distro>/<template> ---
+
+define rule_push
+push-$(1)/$(2):
+	$(call cmd_push,$(1),$(2))
+endef
+
+$(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),$(eval $(call rule_push,$(d),$(t)))))
+
+# --- clean-<distro>/<template> ---
+
+define rule_clean
 clean-$(1)/$(2):
 	@echo "Removing $(REGISTRY)/$(1)/$(2):latest..."
 	docker rmi $(REGISTRY)/$(1)/$(2):latest 2>/dev/null || true
 endef
 
-$(foreach d,$(DISTROS),$(foreach img,$(IMAGES),$(eval $(call CLEAN_template,$(d),$(img)))))
+$(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),$(eval $(call rule_clean,$(d),$(t)))))
+
+# ===========================================================================
+# 2. Image targets: <distro>/<template> — build, then test + push inline
+# ===========================================================================
+
+define rule_image
+$(1)/$(2): build-$(1)/$(2)
+	$(call cmd_test,$(2),$(1))
+	$(call cmd_push,$(1),$(2))
+endef
+
+$(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),$(eval $(call rule_image,$(d),$(t)))))
+
+# ===========================================================================
+# 3. Aggregate targets — pure dependencies, no recipes
+# ===========================================================================
+
+# --- <do>: all distros, all templates ---
+build: $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),build-$(d)/$(t)))
+test:  $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),test-$(d)/$(t)))
+push:  $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),push-$(d)/$(t)))
+clean: $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),clean-$(d)/$(t)))
+
+# --- <do>-<distro>: all templates for one distro ---
+$(foreach d,$(DISTROS),$(eval build-$(d): $(foreach t,$(TEMPLATES),build-$(d)/$(t))))
+$(foreach d,$(DISTROS),$(eval test-$(d):  $(foreach t,$(TEMPLATES),test-$(d)/$(t))))
+$(foreach d,$(DISTROS),$(eval push-$(d):  $(foreach t,$(TEMPLATES),push-$(d)/$(t))))
+$(foreach d,$(DISTROS),$(eval clean-$(d): $(foreach t,$(TEMPLATES),clean-$(d)/$(t))))
+
+# --- <do>-<template>: all distros for one template ---
+$(foreach t,$(TEMPLATES),$(eval build-$(t): $(foreach d,$(DISTROS),build-$(d)/$(t))))
+$(foreach t,$(TEMPLATES),$(eval test-$(t):  $(foreach d,$(DISTROS),test-$(d)/$(t))))
+$(foreach t,$(TEMPLATES),$(eval push-$(t):  $(foreach d,$(DISTROS),push-$(d)/$(t))))
+$(foreach t,$(TEMPLATES),$(eval clean-$(t): $(foreach d,$(DISTROS),clean-$(d)/$(t))))
+
+# --- <template>: all distros, full cycle (build → test → push) ---
+$(foreach t,$(TEMPLATES),$(eval $(t): $(foreach d,$(DISTROS),$(d)/$(t))))
+
+# --- all ---
+all: $(TEMPLATES)
+
+# ===========================================================================
+# .PHONY
+# ===========================================================================
+
+.PHONY: all setup build test push clean \
+        $(DISTROS) $(TEMPLATES) \
+        $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),$(d)/$(t))) \
+        $(foreach d,$(DISTROS),$(foreach t,$(TEMPLATES),build-$(d)/$(t) test-$(d)/$(t) push-$(d)/$(t) clean-$(d)/$(t))) \
+        $(foreach d,$(DISTROS),build-$(d) test-$(d) push-$(d) clean-$(d)) \
+        $(foreach t,$(TEMPLATES),build-$(t) test-$(t) push-$(t) clean-$(t))
