@@ -1,0 +1,281 @@
+# PowerTech Docker Images — GitLab CI/CD
+#
+# Every job runs `make <job-name> -j8` on the VPS (tag: linux).
+# All jobs are manual and have no inter-stage dependencies.
+#
+# GHCR auth: set CI/CD variables GHCR_USER and GHCR_TOKEN
+# (Settings → CI/CD → Variables, masked + protected).
+
+stages:
+  - Aggregates
+  - Templates
+  - Build
+  - Test
+  - Push
+  - Clean
+
+# ---------------------------------------------------------------------------
+# Base job template
+# ---------------------------------------------------------------------------
+.job:
+  tags:
+    - linux
+  when: manual
+  needs: []
+  cache:
+    key: dockers-cache
+    paths:
+      - .cache
+  before_script:
+    - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+  script:
+    - make $CI_JOB_NAME -j8
+
+# ===========================================================================
+# Aggregates
+# ===========================================================================
+.aggregates-job:
+  extends: .job
+  stage: Aggregates
+
+build:
+  extends: .aggregates-job
+
+test:
+  extends: .aggregates-job
+
+push:
+  extends: .aggregates-job
+
+clean:
+  extends: .aggregates-job
+
+# ===========================================================================
+# Templates — full cycle (build → test → push) per template
+# ===========================================================================
+.templates-job:
+  extends: .job
+  stage: Templates
+
+tools:
+  extends: .templates-job
+
+dev:
+  extends: .templates-job
+
+clang:
+  extends: .templates-job
+
+go:
+  extends: .templates-job
+
+rust:
+  extends: .templates-job
+
+csharp:
+  extends: .templates-job
+
+nodejs:
+  extends: .templates-job
+
+mobile:
+  extends: .templates-job
+
+cross-platform:
+  extends: .templates-job
+
+cross-clang:
+  extends: .templates-job
+
+cross-go:
+  extends: .templates-job
+
+cross-rust:
+  extends: .templates-job
+
+cross-csharp:
+  extends: .templates-job
+
+# ===========================================================================
+# Build
+# ===========================================================================
+.build-job:
+  extends: .job
+  stage: Build
+
+build-tools:
+  extends: .build-job
+
+build-dev:
+  extends: .build-job
+
+build-clang:
+  extends: .build-job
+
+build-go:
+  extends: .build-job
+
+build-rust:
+  extends: .build-job
+
+build-csharp:
+  extends: .build-job
+
+build-nodejs:
+  extends: .build-job
+
+build-mobile:
+  extends: .build-job
+
+build-cross-platform:
+  extends: .build-job
+
+build-cross-clang:
+  extends: .build-job
+
+build-cross-go:
+  extends: .build-job
+
+build-cross-rust:
+  extends: .build-job
+
+build-cross-csharp:
+  extends: .build-job
+
+# ===========================================================================
+# Test
+# ===========================================================================
+.test-job:
+  extends: .job
+  stage: Test
+
+test-tools:
+  extends: .test-job
+
+test-dev:
+  extends: .test-job
+
+test-clang:
+  extends: .test-job
+
+test-go:
+  extends: .test-job
+
+test-rust:
+  extends: .test-job
+
+test-csharp:
+  extends: .test-job
+
+test-nodejs:
+  extends: .test-job
+
+test-mobile:
+  extends: .test-job
+
+test-cross-platform:
+  extends: .test-job
+
+test-cross-clang:
+  extends: .test-job
+
+test-cross-go:
+  extends: .test-job
+
+test-cross-rust:
+  extends: .test-job
+
+test-cross-csharp:
+  extends: .test-job
+
+# ===========================================================================
+# Push
+# ===========================================================================
+.push-job:
+  extends: .job
+  stage: Push
+
+push-tools:
+  extends: .push-job
+
+push-dev:
+  extends: .push-job
+
+push-clang:
+  extends: .push-job
+
+push-go:
+  extends: .push-job
+
+push-rust:
+  extends: .push-job
+
+push-csharp:
+  extends: .push-job
+
+push-nodejs:
+  extends: .push-job
+
+push-mobile:
+  extends: .push-job
+
+push-cross-platform:
+  extends: .push-job
+
+push-cross-clang:
+  extends: .push-job
+
+push-cross-go:
+  extends: .push-job
+
+push-cross-rust:
+  extends: .push-job
+
+push-cross-csharp:
+  extends: .push-job
+
+# ===========================================================================
+# Clean
+# ===========================================================================
+.clean-job:
+  extends: .job
+  stage: Clean
+
+clean-tools:
+  extends: .clean-job
+
+clean-dev:
+  extends: .clean-job
+
+clean-clang:
+  extends: .clean-job
+
+clean-go:
+  extends: .clean-job
+
+clean-rust:
+  extends: .clean-job
+
+clean-csharp:
+  extends: .clean-job
+
+clean-nodejs:
+  extends: .clean-job
+
+clean-mobile:
+  extends: .clean-job
+
+clean-cross-platform:
+  extends: .clean-job
+
+clean-cross-clang:
+  extends: .clean-job
+
+clean-cross-go:
+  extends: .clean-job
+
+clean-cross-rust:
+  extends: .clean-job
+
+clean-cross-csharp:
+  extends: .clean-job

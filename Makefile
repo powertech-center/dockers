@@ -32,13 +32,15 @@ TEMPLATES := tools dev clang go rust csharp nodejs mobile cross-platform cross-c
 # --- setup ---
 
 setup:
-	@if command -v apk >/dev/null 2>&1; then \
-		apk add --no-cache py3-jinja2; \
-	elif command -v apt-get >/dev/null 2>&1; then \
-		apt-get install -y python3-jinja2; \
-	else \
-		pip install -r shared/requirements.txt; \
-	fi
+	@python3 -c "import jinja2" 2>/dev/null || { \
+		if command -v apk >/dev/null 2>&1; then \
+			apk add --no-cache py3-jinja2; \
+		elif command -v apt-get >/dev/null 2>&1; then \
+			apt-get install -y python3-jinja2; \
+		else \
+			pip install -r shared/requirements.txt; \
+		fi; \
+	}
 
 # --- build-<distro>/<template> ---
 
