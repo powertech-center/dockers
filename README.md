@@ -3,6 +3,29 @@
 Hierarchical Docker images for cross-platform development. Based on Alpine Linux with musl.
 All images are published to `ghcr.io/powertech-center/`.
 
+## Table of Contents
+
+- [Image Hierarchy](#image-hierarchy)
+- [Images](#images)
+  - [alpine/tools](#alpinetools)
+  - [alpine/dev](#alpinedev)
+  - [alpine/clang](#alpineclang)
+  - [alpine/csharp](#alpinecsharp)
+  - [alpine/go](#alpinego)
+  - [alpine/rust](#alpinerust)
+  - [alpine/nodejs](#alpinenodejs)
+  - [alpine/mobile](#alpinemobile)
+  - [alpine/cross-platform](#alpinecross-platform)
+  - [alpine/cross-clang](#alpinecross-clang)
+  - [alpine/cross-csharp](#alpinecross-csharp)
+  - [alpine/cross-go](#alpinecross-go)
+  - [alpine/cross-rust](#alpinecross-rust)
+- [Using as a WSL Distribution](#using-as-a-wsl-distribution)
+- [Building](#building)
+- [Using in Projects](#using-in-projects)
+- [Versions](#versions)
+- [License](#license)
+
 ## Image Hierarchy
 
 ```
@@ -318,6 +341,42 @@ cargo build --release --target x86_64-apple-darwin
 cargo build --release --target aarch64-apple-darwin
 cargo build --release --target x86_64-pc-windows-msvc
 cargo build --release --target aarch64-pc-windows-msvc
+```
+
+## Using as a WSL Distribution
+
+Any published image can be imported into WSL as a full Linux distribution — useful if you want a ready-made development environment on Windows without running Docker containers.
+
+### Why
+
+- Persistent environment with full filesystem access (unlike ephemeral containers)
+- Native performance (no Docker overhead)
+- Seamless integration with Windows: access host files via `/mnt/c/`, call Windows executables, use VS Code Remote-WSL
+
+### Step 1 — Export the image as a tar archive
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and run in PowerShell:
+
+```powershell
+$IMG = "ghcr.io/powertech-center/alpine/dev:latest"; $CID = docker create $IMG; docker export $CID -o dev.tar; docker rm $CID; docker rmi $IMG
+```
+
+### Step 2 — Import into WSL
+
+```powershell
+wsl --import AlpineDev C:\WSL\AlpineDev dev.tar
+```
+
+This creates a WSL distribution named `AlpineDev` with its virtual disk stored in `C:\WSL\AlpineDev`.
+
+### Step 3 — Launch
+
+```powershell
+# Start an interactive shell
+wsl -d AlpineDev
+
+# Or make it your default distribution
+wsl --set-default AlpineDev
 ```
 
 ## Building
