@@ -1,6 +1,6 @@
 #!/bin/sh
-# alpine-rust.sh — Rust toolchain installation
-# Used by: alpine-rust, alpine-cross-rust
+# rust.sh — Rust toolchain installation
+# Used by: rust, cross-rust
 #
 # Installs Rust to global paths (/opt/rust/rustup, /opt/rust/cargo)
 # so the toolchain is available to all users, not just root.
