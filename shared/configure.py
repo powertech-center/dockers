@@ -39,11 +39,11 @@ def main():
         pkg=DISTRO_PKG[args.distro],
     )
 
-    if output_path.exists() and output_path.read_text() == content:
+    if output_path.exists() and output_path.read_text(encoding="utf-8") == content:
         return
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(content)
+    output_path.write_text(content, encoding="utf-8")
 
 
 if __name__ == "__main__":

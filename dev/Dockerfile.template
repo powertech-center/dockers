@@ -1,10 +1,11 @@
-# PowerTech Alpine Dev
+# PowerTech Dev
 # Build tools, compilers and scripting environments for native development
 #
-# Image: ghcr.io/powertech-center/alpine/dev
+# Image: ghcr.io/powertech-center/{{ distro }}/dev
 
-FROM ghcr.io/powertech-center/alpine/tools:latest
+FROM ghcr.io/powertech-center/{{ distro }}/tools:latest
 
+{% if pkg == "apk" -%}
 RUN apk add --no-cache \
     make \
     cmake \
@@ -22,7 +23,32 @@ RUN apk add --no-cache \
     ln -s /usr/lib/ninja-build/bin/ninja /usr/local/bin/ninja && \
     # Python debugger for VSCode
     pip install --break-system-packages debugpy
+{%- elif pkg == "deb" -%}
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    make \
+    cmake \
+    ninja-build \
+    autoconf \
+    automake \
+    libtool \
+    gcc \
+    g++ \
+    libc6-dev \
+    pkg-config \
+    linux-headers-generic \
+    libxml2-dev \
+    libssl-dev \
+    libbz2-dev \
+    python3 \
+    python3-pip \
+    python3-venv \
+    gdb \
+    strace \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --break-system-packages debugpy
+{%- endif %}
 
+{% if pkg == "apk" -%}
 # PowerShell dependencies
 RUN apk add --no-cache \
     less \
@@ -34,7 +60,19 @@ RUN apk add --no-cache \
     userspace-rcu \
     zlib \
     icu-libs
+{%- elif pkg == "deb" -%}
+# PowerShell dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    less \
+    libicu[0-9]* \
+    libssl3 \
+    libkrb5-3 \
+    liblttng-ust1 \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+{%- endif %}
 
+{% if distro == "alpine" -%}
 # PowerShell (musl build for Alpine) — latest stable release
 RUN PWSH_VERSION=$(wget -qO- "https://api.github.com/repos/PowerShell/PowerShell/releases" | \
         jq -r '[.[] | select(.prerelease == false)] | first | .tag_name | ltrimstr("v")') && \
@@ -44,7 +82,19 @@ RUN PWSH_VERSION=$(wget -qO- "https://api.github.com/repos/PowerShell/PowerShell
     chmod +x /opt/microsoft/powershell/7/pwsh && \
     ln -s /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh && \
     rm powershell-${PWSH_VERSION}-linux-musl-x64.tar.gz
+{%- elif distro == "debian" or distro == "ubuntu" -%}
+# PowerShell — latest stable release
+RUN PWSH_VERSION=$(wget -qO- "https://api.github.com/repos/PowerShell/PowerShell/releases" | \
+        jq -r '[.[] | select(.prerelease == false)] | first | .tag_name | ltrimstr("v")') && \
+    wget -q https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-x64.tar.gz && \
+    mkdir -p /opt/microsoft/powershell/7 && \
+    tar xzf powershell-${PWSH_VERSION}-linux-x64.tar.gz -C /opt/microsoft/powershell/7 && \
+    chmod +x /opt/microsoft/powershell/7/pwsh && \
+    ln -s /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh && \
+    rm powershell-${PWSH_VERSION}-linux-x64.tar.gz
+{%- endif %}
 
+{% if distro == "alpine" %}
 # Build musl from git master: some musl-based binaries (e.g. VS Code extensions built against musl master)
 # use dynamic linking and depend on symbols not yet present in the Alpine system musl — this ensures compatibility
 RUN git clone https://git.musl-libc.org/git/musl \
@@ -53,10 +103,15 @@ RUN git clone https://git.musl-libc.org/git/musl \
     && make -j$(nproc) \
     && make install \
     && cd / && rm -rf musl
+{% endif -%}
 
 # Create a non-root user 'dev' — useful in development environments,
 # e.g. as the default user inside a devcontainer
+{% if pkg == "apk" -%}
 RUN adduser -D -s /bin/sh dev
+{%- elif pkg == "deb" -%}
+RUN useradd -m -s /bin/bash dev
+{%- endif %}
 
 # Crossler — cross-platform packaging tool (wixl, nfpm, osslsigncode, rcodesign, xar, bomutils)
 RUN curl -fsSL https://raw.githubusercontent.com/powertech-center/crossler/master/scripts/install.sh | sh
