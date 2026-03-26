@@ -1,11 +1,11 @@
-# PowerTech Alpine Clang (native)
+# PowerTech Clang (native)
 # LLVM/Clang development environment for native (host) compilation
 #
-# Image: ghcr.io/powertech-center/alpine/clang
+# Image: ghcr.io/powertech-center/{{ distro }}/clang
 
-FROM ghcr.io/powertech-center/alpine/dev:latest
+FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/alpine-clang.sh
+    sh /tmp/shared/clang.sh {{ pkg }}
 
 CMD ["/bin/sh"]

@@ -7,6 +7,6 @@
 FROM ghcr.io/powertech-center/alpine/cross-platform:latest
 
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/alpine-clang.sh
+    sh /tmp/shared/clang.sh apk
 
 CMD ["/bin/sh"]
