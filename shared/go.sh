@@ -1,6 +1,6 @@
 #!/bin/sh
-# alpine-go.sh — Go toolchain installation
-# Used by: alpine-go, alpine-cross-go
+# go.sh — Go toolchain installation
+# Used by: go, cross-go
 #
 # Installs the latest stable Go release, sets up GOPATH,
 # and installs common Go tools for IDE support and development workflow.
