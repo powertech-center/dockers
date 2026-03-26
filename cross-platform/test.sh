@@ -102,7 +102,7 @@ for test_file in $test_files; do
     name=$(basename "$test_file" .sh)
     total_suites=$((total_suites + 1))
 
-    printf "${BOLD}--- %s ---${RESET}\n" "$name"
+    printf "%s--- %s ---%s\n" "$BOLD" "$name" "$RESET"
     sh "$test_file"
     rc=$?
 
