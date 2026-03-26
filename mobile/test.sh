@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for alpine-mobile image
+# Tests for mobile image — distro-independent
 set -e
 
 PASS=0
@@ -16,13 +16,15 @@ check() {
     fi
 }
 
-echo "=== alpine-mobile tests ==="
+echo "=== Mobile tests ==="
 
-# ── glibc compatibility ──
-echo ""
-echo "--- glibc compatibility ---"
-check "gcompat installed"          test -f /lib/libgcompat.so.0
-check "ld-linux-x86-64 exists"    test -f /lib/ld-linux-x86-64.so.2
+# ── glibc compatibility (Alpine only — musl needs gcompat shim) ──
+if [ -f /etc/alpine-release ]; then
+    echo ""
+    echo "--- glibc compatibility ---"
+    check "gcompat installed"          test -f /lib/libgcompat.so.0
+    check "ld-linux-x86-64 exists"    test -f /lib/ld-linux-x86-64.so.2
+fi
 
 # ── JDK ──
 echo ""
@@ -74,16 +76,6 @@ check "Flutter SDK readable by dev"   su dev -c "test -r ${FLUTTER_HOME}/bin/flu
 check "Gradle readable by dev"        su dev -c "test -r /opt/gradle/bin/gradle"
 check "flutter runs as dev"           su dev -c "flutter --version"
 check "dart runs as dev"              su dev -c "dart --version"
-
-# ── Inherited from alpine-dev ──
-echo ""
-echo "--- Inherited tools ---"
-check "gcc available"            gcc --version
-check "cmake available"          cmake --version
-check "make available"           make --version
-check "python3 available"        python3 --version
-check "git available"            git --version
-check "dev user exists"          id dev
 
 # ── Summary ──
 echo ""

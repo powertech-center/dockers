@@ -1,24 +1,25 @@
-# PowerTech Alpine Mobile
+# PowerTech {{ distro | capitalize }} Mobile
 # Universal mobile development environment (Android, Flutter, React Native, KMP)
 #
-# Image: ghcr.io/powertech-center/alpine/mobile
+# Image: ghcr.io/powertech-center/{{ distro }}/mobile
 #
 # Key design decisions:
-# - Inherits from alpine-nodejs (not alpine-dev) purely as a build optimization:
+# - Inherits from nodejs (not dev) purely as a build optimization:
 #   React Native requires the full Node.js toolchain, so inheriting avoids
-#   duplicating ~100+ MB of identical layers. For the user, alpine-nodejs and
-#   alpine-mobile are independent peer images — do NOT reflect this dependency
+#   duplicating ~100+ MB of identical layers. For the user, nodejs and
+#   mobile are independent peer images — do NOT reflect this dependency
 #   in README.md or public documentation.
 # - Android SDK tools are glibc-linked binaries; Alpine uses musl
-# - gcompat + glibc dynamic linker provide the compatibility layer
-# - JDK (latest LTS) from Alpine repos is musl-native (no shim needed)
-# - Flutter SDK requires glibc compat (Dart runtime is glibc-linked)
+# - gcompat + glibc dynamic linker provide the compatibility layer (Alpine only)
+# - JDK (latest LTS) — musl-native from repos (Alpine) or default-jdk (Debian/Ubuntu)
+# - Flutter SDK requires glibc compat on Alpine (Dart runtime is glibc-linked)
 #
 # iOS note: Full iOS development requires macOS (Xcode).
 # For limited iOS cross-compilation from Linux, see: https://github.com/nicklama/xtool
 
-FROM ghcr.io/powertech-center/alpine/nodejs:latest
+FROM ghcr.io/powertech-center/{{ distro }}/nodejs:latest
 
+{% if distro == "alpine" -%}
 # ── glibc compatibility layer ──────────────────────────────────────────────────
 # Android SDK and Flutter/Dart binaries are linked against glibc.
 # gcompat provides a musl-to-glibc translation shim, but the binaries also need
@@ -29,17 +30,19 @@ RUN apk add --no-cache gcompat libstdc++ && \
     # but if missing we create a symlink to the gcompat loader.
     [ -f /lib/ld-linux-x86-64.so.2 ] || \
     ln -s /lib/ld-musl-x86_64.so.1 /lib/ld-linux-x86-64.so.2 2>/dev/null || true
+{%- endif %}
 
-# ── JDK (latest compatible LTS, musl-native, auto-detected) ──────────────────
+# ── JDK (latest compatible LTS, auto-detected) ──────────────────────────────
 # Max JDK version is determined from Gradle's compatibility page.
-# From available Alpine packages, we pick the highest LTS that Gradle supports.
+# From available packages, we pick the highest LTS that Gradle supports.
 # Java LTS versions: 8, 11, 17, 21, 25, 29, 33, ...
+{% if pkg == "apk" -%}
 RUN apk update && \
     MAX_JDK=$(wget -qO- "https://docs.gradle.org/current/userguide/compatibility.html" | \
         grep -oE 'between [0-9]+ and [0-9]+' | grep -oE '[0-9]+$') && \
     JDK_PKG=$(apk search openjdk | grep -E '^openjdk[0-9]+-jdk-' | \
         sed 's/-[0-9].*//' | while read pkg; do \
-            ver=$(echo "$pkg" | grep -oP '\d+'); \
+            ver=$(echo "$pkg" | grep -oE '[0-9]+'); \
             if [ "$ver" -le "$MAX_JDK" ]; then \
                 for lts in 8 11 17 21 25 29 33; do \
                     [ "$ver" = "$lts" ] && echo "$ver $pkg" && break; \
@@ -48,8 +51,26 @@ RUN apk update && \
         done | sort -n | tail -1 | awk '{print $2}') && \
     apk add --no-cache ${JDK_PKG} && \
     rm -rf /var/cache/apk/* && \
-    JAVA_MAJOR=$(echo ${JDK_PKG} | grep -oP '\d+') && \
+    JAVA_MAJOR=$(echo ${JDK_PKG} | grep -oE '[0-9]+') && \
     ln -s /usr/lib/jvm/java-${JAVA_MAJOR}-openjdk /usr/lib/jvm/java-openjdk
+{%- elif pkg == "deb" -%}
+RUN MAX_JDK=$(wget -qO- "https://docs.gradle.org/current/userguide/compatibility.html" | \
+        grep -oE 'between [0-9]+ and [0-9]+' | grep -oE '[0-9]+$') && \
+    apt-get update && \
+    JDK_PKG=$(apt-cache search --names-only '^openjdk-[0-9]+-jdk$' | \
+        sed 's/ .*//' | while read pkg; do \
+            ver=$(echo "$pkg" | grep -oE '[0-9]+'); \
+            if [ "$ver" -le "$MAX_JDK" ]; then \
+                for lts in 8 11 17 21 25 29 33; do \
+                    [ "$ver" = "$lts" ] && echo "$ver $pkg" && break; \
+                done; \
+            fi; \
+        done | sort -n | tail -1 | awk '{print $2}') && \
+    apt-get install -y --no-install-recommends ${JDK_PKG} && \
+    rm -rf /var/lib/apt/lists/* && \
+    JAVA_MAJOR=$(echo ${JDK_PKG} | grep -oE '[0-9]+') && \
+    ln -sf /usr/lib/jvm/java-${JAVA_MAJOR}-openjdk-amd64 /usr/lib/jvm/java-openjdk
+{%- endif %}
 
 ENV JAVA_HOME=/usr/lib/jvm/java-openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
@@ -61,9 +82,9 @@ ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tool
 
 # Download cmdline-tools, install SDK components, and set ownership in one layer
 # to avoid duplicating ~3 GB in a separate chown layer
-RUN CMDLINE_URL=$(wget -qO- "https://developer.android.com/studio" | \
-        grep -oP 'https://dl\.google\.com/android/repository/commandlinetools-linux-\d+_latest\.zip' | head -1) && \
-    wget -q "${CMDLINE_URL}" -O /tmp/cmdline-tools.zip && \
+RUN CMDLINE_ZIP=$(curl -fsSL "https://dl.google.com/android/repository/repository2-3.xml" | \
+        grep -oE 'commandlinetools-linux-[0-9]+_latest\.zip' | sort -t- -k3 -n | tail -1) && \
+    wget -q "https://dl.google.com/android/repository/${CMDLINE_ZIP}" -O /tmp/cmdline-tools.zip && \
     mkdir -p ${ANDROID_HOME}/cmdline-tools && \
     unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools-tmp && \
     mv /tmp/cmdline-tools-tmp/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
@@ -106,13 +127,21 @@ RUN FLUTTER_VERSION=$(wget -qO- "https://storage.googleapis.com/flutter_infra_re
         -O /tmp/flutter.tar.xz && \
     tar xf /tmp/flutter.tar.xz -C /opt && \
     rm /tmp/flutter.tar.xz && \
-    git config --global --add safe.directory /opt/flutter && \
+    git config --system --add safe.directory /opt/flutter && \
     flutter config --no-analytics && \
     dart --disable-analytics && \
     flutter precache --android && \
-    chmod -R a+rX ${FLUTTER_HOME}
+    chmod -R a+rX ${FLUTTER_HOME} && \
+    # Flutter writes to bin/cache on first run (engine.stamp, etc.)
+    chmod -R a+wX ${FLUTTER_HOME}/bin/cache
 
-# Git safe directory for Flutter (needed when running as different user)
-RUN git config --global --add safe.directory ${FLUTTER_HOME}
+# Git safe directory for Flutter — use --system so all users (not just root) inherit it
+RUN git config --system --add safe.directory ${FLUTTER_HOME}
+
+{% if pkg == "deb" -%}
+# Sync Docker ENV PATH into /etc/environment so that `su <user>` inherits it
+# (Debian/Ubuntu `su` resets PATH from /etc/environment, unlike Alpine's BusyBox `su`)
+RUN echo "PATH=\"${PATH}\"" > /etc/environment
+{%- endif %}
 
 CMD ["/bin/sh"]
