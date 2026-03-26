@@ -1,6 +1,6 @@
 #!/bin/sh
 # Shared .NET tools installation
-# Used by: alpine-csharp, alpine-cross-csharp
+# Used by: csharp, cross-csharp
 #
 # Installs .NET global tools to /opt/dotnet-tools (via DOTNET_CLI_HOME)
 # so they are available to all users, not just the installing user.

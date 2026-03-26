@@ -12,11 +12,12 @@ else
     test_fail "dotnet available" "dotnet not found in PATH"
 fi
 
-# Check SDK version is 9.x
-if dotnet --version 2>&1 | grep -q "^9\."; then
-    test_pass "SDK is .NET 9"
+# Check SDK version is an even-numbered (LTS) release
+major=$(dotnet --version 2>&1 | cut -d. -f1)
+if [ "$((major % 2))" -eq 0 ] 2>/dev/null; then
+    test_pass "SDK is LTS release (.NET $major)"
 else
-    test_fail "SDK is .NET 9" "expected 9.x, got $(dotnet --version 2>&1)"
+    test_fail "SDK is LTS release" "expected even major version, got $(dotnet --version 2>&1)"
 fi
 
 # Check dotnet --info works

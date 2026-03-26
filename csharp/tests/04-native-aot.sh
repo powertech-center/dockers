@@ -7,19 +7,23 @@ echo "=== NativeAOT native compilation ==="
 PROJECT="$SRCDIR/hello_aot"
 OUTPUT="$WORKDIR/aot_output"
 
+# Detect host RID (linux-musl-x64 on Alpine, linux-x64 on Debian/Ubuntu)
+RID=$(dotnet --info 2>/dev/null | sed -n 's/.*RID:\s*//p' | head -1)
+[ -z "$RID" ] && RID="linux-x64"
+
 # Publish as NativeAOT
 stderr=$(cd "$PROJECT" && \
-    dotnet publish -r linux-musl-x64 \
+    dotnet publish -r "$RID" \
         -p:PublishAot=true \
         -o "$OUTPUT" \
         --nologo -v quiet 2>&1)
 rc=$?
 
 if [ $rc -eq 0 ] && [ -f "$OUTPUT/hello_aot" ]; then
-    test_pass "NativeAOT publish (linux-musl-x64)"
+    test_pass "NativeAOT publish ($RID)"
 else
     err_line=$(echo "$stderr" | grep -m1 "error" || echo "$stderr" | tail -3)
-    test_fail "NativeAOT publish (linux-musl-x64)" "$err_line"
+    test_fail "NativeAOT publish ($RID)" "$err_line"
     test_summary
     exit $?
 fi

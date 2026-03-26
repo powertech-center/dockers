@@ -15,9 +15,9 @@ FROM ghcr.io/powertech-center/alpine/cross-platform:latest
 
 # Install .NET SDK and NativeAOT dependencies
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/alpine-csharp.sh
+    sh /tmp/shared/csharp.sh apk
 
-ENV DOTNET_ROOT="/usr/lib/dotnet"
+ENV DOTNET_ROOT="/usr/share/dotnet"
 ENV DOTNET_CLI_HOME=/opt/dotnet-tools
 ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 

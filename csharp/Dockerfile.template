@@ -1,16 +1,16 @@
-# PowerTech Alpine C# (native)
+# PowerTech C# (native)
 # .NET development environment for native (host) compilation
 # Includes NativeAOT support for producing fully native Linux binaries.
 #
-# Image: ghcr.io/powertech-center/alpine/csharp
+# Image: ghcr.io/powertech-center/{{ distro }}/csharp
 
-FROM ghcr.io/powertech-center/alpine/dev:latest
+FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
 # Install .NET SDK and NativeAOT dependencies
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/alpine-csharp.sh
+    sh /tmp/shared/csharp.sh {{ pkg }}
 
-ENV DOTNET_ROOT="/usr/lib/dotnet"
+ENV DOTNET_ROOT="/usr/share/dotnet"
 ENV DOTNET_CLI_HOME=/opt/dotnet-tools
 ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 
@@ -18,9 +18,14 @@ ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/dev-tools-csharp.sh
 
+{% if distro == "alpine" -%}
 # Pre-fetch NativeAOT ILC runtime package for the host target.
 # Makes `dotnet publish -p:PublishAot=true` work without downloading at build time.
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/csharp-prefetch.sh linux-musl-x64
+{%- elif distro == "debian" or distro == "ubuntu" -%}
+RUN --mount=type=bind,source=shared,target=/tmp/shared \
+    sh /tmp/shared/csharp-prefetch.sh linux-x64
+{%- endif %}
 
 CMD ["/bin/sh"]

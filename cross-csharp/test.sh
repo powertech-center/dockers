@@ -56,7 +56,7 @@ printf "${BOLD}Running C# (.NET) cross-compilation tests${RESET}\n\n"
 for test_file in $test_files; do
     name=$(basename "$test_file" .sh)
     total_suites=$((total_suites + 1))
-    printf "${BOLD}--- %s ---${RESET}\n" "$name"
+    printf "%s--- %s ---%s\n" "$BOLD" "$name" "$RESET"
     sh "$test_file"
     [ $? -ne 0 ] && { failed_suites=$((failed_suites + 1)); failed_names="$failed_names $name"; }
     echo ""

@@ -13,15 +13,19 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# Detect installed .NET major version → TargetFramework moniker
+DOTNET_MAJOR=$(dotnet --version | cut -d. -f1)
+TFM="net${DOTNET_MAJOR}.0"
+
 # Create a temporary project with PublishAot=true
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
-cat > "$tmpdir/prefetch.csproj" <<'CSPROJ'
+cat > "$tmpdir/prefetch.csproj" <<CSPROJ
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>${TFM}</TargetFramework>
     <PublishAot>true</PublishAot>
   </PropertyGroup>
 </Project>

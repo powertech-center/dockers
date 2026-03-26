@@ -11,7 +11,15 @@ _test_errors=""
 WORKDIR=$(mktemp -d /tmp/csharp-test.XXXXXX)
 trap 'rm -rf "$WORKDIR"' EXIT
 
-SRCDIR="$(cd "$(dirname "$0")/src" && pwd)"
+# Detect installed .NET major version → TargetFramework moniker (e.g. net10.0)
+DOTNET_MAJOR=$(dotnet --version 2>/dev/null | cut -d. -f1)
+TFM="net${DOTNET_MAJOR}.0"
+
+# Copy test sources into WORKDIR and patch TargetFramework to match installed SDK
+_orig_src="$(cd "$(dirname "$0")/src" && pwd)"
+SRCDIR="$WORKDIR/src"
+cp -r "$_orig_src" "$SRCDIR"
+find "$SRCDIR" -name '*.csproj' -exec sed -i "s|<TargetFramework>net[0-9]*\.[0-9]*</TargetFramework>|<TargetFramework>${TFM}</TargetFramework>|g" {} +
 
 if [ -t 1 ]; then
     _GREEN='\033[0;32m'
