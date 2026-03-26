@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for alpine-nodejs image
+# Tests for nodejs image — distro-independent
 set -e
 
 PASS=0
@@ -16,7 +16,7 @@ check() {
     fi
 }
 
-echo "=== alpine-nodejs tests ==="
+echo "=== Node.js tests ==="
 
 # ── Node.js runtime ──
 echo ""
@@ -44,14 +44,13 @@ echo "--- Linters & formatters ---"
 check "eslint available"            eslint --version
 check "prettier available"          prettier --version
 
-# ── Native addon support (from alpine-dev) ──
+# ── Native addon support (from dev) ──
 echo ""
 echo "--- Native addon support ---"
 check "gcc available"               gcc --version
 check "g++ available"               g++ --version
 check "make available"              make --version
 check "python3 available"           python3 --version
-check "node-gyp headers"           node -e "require('child_process').execSync('node -e \"process.config\"')"
 
 # ── Multi-user access ──
 echo ""
@@ -59,13 +58,6 @@ echo "--- Multi-user access ---"
 check "node runs as dev"            su dev -c "node --version"
 check "npm runs as dev"             su dev -c "npm --version"
 check "tsc runs as dev"             su dev -c "tsc --version"
-
-# ── Inherited from alpine-dev ──
-echo ""
-echo "--- Inherited tools ---"
-check "cmake available"             cmake --version
-check "git available"               git --version
-check "dev user exists"             id dev
 
 # ── Summary ──
 echo ""

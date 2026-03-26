@@ -1,18 +1,31 @@
-# PowerTech Alpine Node.js
+# PowerTech {{ distro | capitalize }} Node.js
 # Universal JavaScript/TypeScript development environment
 #
-# Image: ghcr.io/powertech-center/alpine/nodejs
+# Image: ghcr.io/powertech-center/{{ distro }}/nodejs
 #
 # Key design decisions:
-# - Node.js from Alpine repos is musl-native (no glibc shim needed)
+# - Node.js LTS — latest stable long-term support release
 # - Global tools: TypeScript, ESLint, Prettier — industry standard CLI tools
 # - Package managers: npm (built-in), yarn, pnpm — covers all lockfile formats
-# - Native addon support: node-gyp works via gcc/g++/make/python3 from alpine-dev
+# - Native addon support: node-gyp works via gcc/g++/make/python3 from dev
 
-FROM ghcr.io/powertech-center/alpine/dev:latest
+FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
-# ── Node.js LTS (musl-native, from Alpine packages) ─────────────────────────
+# ── Node.js LTS ──────────────────────────────────────────────────────────────
+{% if pkg == "apk" -%}
 RUN apk add --no-cache nodejs npm
+{%- elif pkg == "deb" -%}
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && NODE_MAJOR=$(curl -fsSL https://nodejs.org/dist/index.json \
+       | python3 -c "import sys,json; vs=json.load(sys.stdin); print(next(v['version'].split('.')[0].lstrip('v') for v in vs if v.get('lts')))") \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+       > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+{%- endif %}
 
 # ── Package managers ─────────────────────────────────────────────────────────
 # yarn and pnpm — two major alternatives to npm, different projects use different ones
