@@ -1,4 +1,4 @@
-# PowerTech Alpine Go
+# PowerTech {{ distro | capitalize }} Cross-Go
 # Go development and cross-compilation environment
 # 6 CGO cross-compilation targets: Linux musl, macOS, Windows GNU (x64/arm64 each)
 #
