@@ -57,7 +57,7 @@ for entry in $AOT_TARGETS; do
     fi
 
     # For native host target, verify it actually runs
-    if [ "$rid" = "linux-musl-x64" ]; then
+    if [ "$rid" = "$HOST_RID" ]; then
         run_output=$("$binary" 2>&1)
         if [ $? -eq 0 ] && echo "$run_output" | grep -q "Hello from NativeAOT"; then
             test_pass "$rid: binary runs correctly"

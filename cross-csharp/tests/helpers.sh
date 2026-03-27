@@ -67,6 +67,13 @@ PUBLISH_TARGETS="
     osx-arm64
 "
 
+# Detect host RID for "can we run this binary?" tests
+if [ -f /etc/alpine-release ]; then
+    HOST_RID="linux-musl-x64"
+else
+    HOST_RID="linux-x64"
+fi
+
 TARGET_FILTER="${TARGET_FILTER:-}"
 
 filter_targets() {
