@@ -1,6 +1,6 @@
 #!/bin/sh
 # helpers.sh — Test framework for Rust cross-compilation tests
-# Reuses the core from alpine-cross-platform/tests/helpers.sh with Rust-specific additions.
+# Reuses the core from cross-clang/tests/helpers.sh with Rust-specific additions.
 
 set -u
 

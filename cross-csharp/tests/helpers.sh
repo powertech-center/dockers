@@ -35,7 +35,7 @@ fi
 # Format: "rid:compiler:sysroot"
 AOT_LINUX_TARGETS="
     linux-musl-x64:clang-x86_64-linux-musl:/
-    linux-musl-arm64:clang-aarch64-linux-musl:/usr/aarch64-alpine-linux-musl
+    linux-musl-arm64:clang-aarch64-linux-musl:/usr/aarch64-linux-musl
     linux-x64:clang-x86_64-linux-gnu:/usr/x86_64-linux-gnu
     linux-arm64:clang-aarch64-linux-gnu:/usr/aarch64-linux-gnu
 "

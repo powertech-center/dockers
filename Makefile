@@ -6,24 +6,19 @@
 #     └── <distro>/tools          (wget, curl, git, zip, 7z, jq...)
 #           └── <distro>/dev      (make, cmake, gcc, musl git master, dev user)
 #                 ├── <distro>/clang      (LLVM/Clang, native host)
+#                 │     └── <distro>/cross-clang  (cross-compilation: SDKs, sysroots, wrappers)
+#                 │           ├── <distro>/cross-go       (Go toolchain)
+#                 │           ├── <distro>/cross-rust     (Rust + cargo-audit)
+#                 │           └── <distro>/cross-csharp   (.NET SDK + NativeAOT cross-compilation)
 #                 ├── <distro>/go         (Go toolchain, native host)
 #                 ├── <distro>/rust       (Rust toolchain, native host)
 #                 ├── <distro>/csharp     (.NET SDK + NativeAOT, native host)
 #                 ├── <distro>/nodejs     (Node.js, TypeScript, JS/TS tooling)
 #                 │     └── <distro>/mobile     (Android SDK, Flutter, React Native)
-#                 │           NOTE: mobile inherits from nodejs purely as a build
-#                 │           optimization (reuses Node.js layers needed for React
-#                 │           Native). For the user, these are independent peer images.
-#                 │           Do NOT reflect this dependency in README.md.
-#                 └── <distro>/cross-platform  (clang wrappers, macOS SDK, xwin)
-#                       ├── <distro>/cross-clang    (LLVM/Clang toolchain + dev libs)
-#                       ├── <distro>/cross-go       (Go toolchain)
-#                       ├── <distro>/cross-rust     (Rust + cargo-audit)
-#                       └── <distro>/cross-csharp   (.NET SDK + NativeAOT cross-compilation)
 
 REGISTRY  := ghcr.io/powertech-center
 DISTROS   := alpine debian ubuntu
-TEMPLATES := tools dev clang go rust csharp nodejs mobile cross-platform cross-clang cross-go cross-rust cross-csharp
+TEMPLATES := tools dev clang go rust csharp nodejs mobile cross-clang cross-go cross-rust cross-csharp
 
 # ===========================================================================
 # 1. Base targets: <do>-<distro>/<template> — actual recipes
@@ -58,14 +53,13 @@ $(eval $(call rule_build,$(1),dev,build-$(1)/tools))
 $(eval $(call rule_build,$(1),clang,build-$(1)/dev))
 $(eval $(call rule_build,$(1),go,build-$(1)/dev))
 $(eval $(call rule_build,$(1),rust,build-$(1)/dev))
-$(eval $(call rule_build,$(1),cross-platform,build-$(1)/dev))
-$(eval $(call rule_build,$(1),cross-clang,build-$(1)/cross-platform))
-$(eval $(call rule_build,$(1),cross-go,build-$(1)/cross-platform))
+$(eval $(call rule_build,$(1),cross-clang,build-$(1)/clang))
+$(eval $(call rule_build,$(1),cross-go,build-$(1)/cross-clang))
 $(eval $(call rule_build,$(1),csharp,build-$(1)/dev))
 $(eval $(call rule_build,$(1),nodejs,build-$(1)/dev))
 $(eval $(call rule_build,$(1),mobile,build-$(1)/nodejs))
-$(eval $(call rule_build,$(1),cross-rust,build-$(1)/cross-platform))
-$(eval $(call rule_build,$(1),cross-csharp,build-$(1)/cross-platform))
+$(eval $(call rule_build,$(1),cross-rust,build-$(1)/cross-clang))
+$(eval $(call rule_build,$(1),cross-csharp,build-$(1)/cross-clang))
 endef
 
 $(foreach d,$(DISTROS),$(eval $(call rule_build_deps,$(d))))

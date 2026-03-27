@@ -136,13 +136,12 @@ def generate(target_name, sysroot, cpp):
 
     elif kind == "windows-msvc":
         # xwin headers are unpatched — they use _MSC_VER natively,
-        # and clang defines _MSC_VER for MSVC target, so no XW_* aliases needed.
+        # and clang defines _MSC_VER for MSVC target.
         # Include paths go into compile_flags (not base) to avoid warnings during link-only
         pass
 
     elif kind == "windows-gnu":
         # Native MinGW sysroot: headers and libs from llvm-mingw
-        # No XW_* macros needed (mingw-w64 headers don't use _MSC_VER)
         # No -fms-extensions needed (mingw-w64 headers don't use MSVC syntax)
         # Include paths: mingw-w64 headers + libc++ headers for C++
         if cpp:

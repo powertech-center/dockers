@@ -5,9 +5,9 @@
 # Smart compiler wrappers auto-inject -fuse-ld=lld when linking is detected.
 # No CGO_LDFLAGS needed — just set CC=clang-<arch>-<os>.
 #
-# Image: ghcr.io/powertech-center/alpine/cross-go
+# Image: ghcr.io/powertech-center/{{ distro }}/cross-go
 
-FROM ghcr.io/powertech-center/alpine/cross-platform:latest
+FROM ghcr.io/powertech-center/{{ distro }}/cross-clang:latest
 
 # Install Go toolchain and set up GOPATH
 RUN --mount=type=bind,source=shared,target=/tmp/shared \

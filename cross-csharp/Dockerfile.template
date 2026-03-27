@@ -9,9 +9,9 @@
 # Standard `dotnet publish` targets (managed IL):
 #   All .NET RIDs including all of the above
 #
-# Image: ghcr.io/powertech-center/alpine/cross-csharp
+# Image: ghcr.io/powertech-center/{{ distro }}/cross-csharp
 
-FROM ghcr.io/powertech-center/alpine/cross-platform:latest
+FROM ghcr.io/powertech-center/{{ distro }}/cross-clang:latest
 
 # Install .NET SDK and NativeAOT dependencies
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
@@ -39,7 +39,7 @@ RUN --mount=type=bind,source=shared,target=/tmp/shared \
 # NativeAOT cross-compilation environment
 #
 # .NET NativeAOT uses a C linker to produce the final native binary.
-# All sysroots and clang/lld wrappers are inherited from alpine/cross-platform.
+# All sysroots and clang/lld wrappers are inherited from cross-clang.
 #
 # Linux targets use MSBuild Unix.targets (CppCompilerAndLinker + SysRoot):
 #   dotnet publish -r <rid> -p:PublishAot=true \
@@ -67,7 +67,7 @@ RUN --mount=type=bind,source=shared,target=/tmp/shared \
 #   # Linux arm64 musl
 #   dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
 #     -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
-#     -p:SysRoot=/usr/aarch64-alpine-linux-musl \
+#     -p:SysRoot=/usr/aarch64-linux-musl \
 #     -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
 #
 #   # macOS arm64

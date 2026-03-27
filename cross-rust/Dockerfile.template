@@ -2,9 +2,9 @@
 # Rust development and cross-compilation environment
 # 8 cargo cross-compilation targets: Linux musl/gnu, macOS, Windows MSVC (x64/arm64 each)
 #
-# Image: ghcr.io/powertech-center/alpine/cross-rust
+# Image: ghcr.io/powertech-center/{{ distro }}/cross-rust
 
-FROM ghcr.io/powertech-center/alpine/cross-platform:latest
+FROM ghcr.io/powertech-center/{{ distro }}/cross-clang:latest
 
 ENV RUSTUP_HOME=/opt/rust/rustup
 ENV CARGO_HOME=/opt/rust/cargo
@@ -29,7 +29,7 @@ RUN rustup component add llvm-tools && \
 # C compiler environment variables (Rust cc crate)
 # CC_<target>  — C compiler wrapper for each cross-compilation target
 # CXX_<target> — C++ compiler wrapper for each cross-compilation target
-# Wrappers are defined in alpine-cross-platform.
+# Wrappers are defined in cross-clang.
 # =============================================================================
 
 # Linux musl targets
@@ -50,7 +50,7 @@ ENV CXX_x86_64_apple_darwin=clang++-x86_64-apple-darwin
 ENV CC_aarch64_apple_darwin=clang-aarch64-apple-darwin
 ENV CXX_aarch64_apple_darwin=clang++-aarch64-apple-darwin
 
-# Windows MSVC targets (clang --driver-mode=cl wrappers from alpine-cross-platform)
+# Windows MSVC targets (clang --driver-mode=cl wrappers from cross-clang)
 ENV CC_x86_64_pc_windows_msvc=clang-x86_64-windows-msvc
 ENV CXX_x86_64_pc_windows_msvc=clang++-x86_64-windows-msvc
 ENV CC_aarch64_pc_windows_msvc=clang-aarch64-windows-msvc
@@ -73,7 +73,7 @@ ENV AR_aarch64_pc_windows_msvc=llvm-lib
 # Linux gnu targets are for native development on glibc desktops (not cross-compilation),
 # so they also use clang wrappers but require a glibc sysroot to actually link.
 #
-# All clang/lld wrappers are defined in alpine-cross-platform.
+# All clang/lld wrappers are defined in cross-clang.
 # =============================================================================
 
 # Linux musl linkers (clang driver: translates -Wl, flags → lld)

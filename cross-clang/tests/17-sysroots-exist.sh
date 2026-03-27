@@ -56,13 +56,22 @@ for arch in x86_64 aarch64; do
     check_file "Windows GNU ${arch}: libgcc.a (stub)" "/usr/windows-gnu/${arch}/lib/libgcc.a"
 done
 
-# --- aarch64 musl sysroot ---
-check_dir  "aarch64 musl sysroot" "/usr/aarch64-alpine-linux-musl"
-check_file "aarch64 musl: libc.so" "/usr/aarch64-alpine-linux-musl/lib/ld-musl-aarch64.so.1"
-check_dir  "aarch64 musl: include" "/usr/aarch64-alpine-linux-musl/usr/include"
+# --- musl sysroots ---
+# On Alpine, x86_64-linux-musl is native (sysroot /), so only aarch64 needs a cross-sysroot.
+# On Debian/Ubuntu, both x86_64 and aarch64 musl are cross targets with dedicated sysroots.
+if [ ! -f /etc/alpine-release ]; then
+    check_dir  "x86_64 musl sysroot" "/usr/x86_64-linux-musl"
+    check_file "x86_64 musl: libc.so" "/usr/x86_64-linux-musl/lib/ld-musl-x86_64.so.1"
+    check_dir  "x86_64 musl: include" "/usr/x86_64-linux-musl/usr/include"
+    check_dir  "x86_64 musl: linux headers" "/usr/x86_64-linux-musl/usr/include/linux"
+    check_dir  "x86_64 musl: asm headers" "/usr/x86_64-linux-musl/usr/include/asm"
+fi
+check_dir  "aarch64 musl sysroot" "/usr/aarch64-linux-musl"
+check_file "aarch64 musl: libc.so" "/usr/aarch64-linux-musl/lib/ld-musl-aarch64.so.1"
+check_dir  "aarch64 musl: include" "/usr/aarch64-linux-musl/usr/include"
 # Kernel UAPI headers (needed for libc++ atomic wait)
-check_dir  "aarch64 musl: linux headers" "/usr/aarch64-alpine-linux-musl/usr/include/linux"
-check_dir  "aarch64 musl: asm headers" "/usr/aarch64-alpine-linux-musl/usr/include/asm"
+check_dir  "aarch64 musl: linux headers" "/usr/aarch64-linux-musl/usr/include/linux"
+check_dir  "aarch64 musl: asm headers" "/usr/aarch64-linux-musl/usr/include/asm"
 
 # --- glibc sysroots ---
 for arch in x86_64 aarch64; do
@@ -71,7 +80,10 @@ for arch in x86_64 aarch64; do
     check_dir  "glibc ${arch}: include" "$sr/usr/include"
     check_file "glibc ${arch}: libc.so (linker script)" "$sr/usr/lib/libc.so"
     check_file "glibc ${arch}: crt1.o" "$sr/usr/lib/crt1.o"
-    check_file "glibc ${arch}: libssp_nonshared.a (stub)" "$sr/usr/lib/libssp_nonshared.a"
+    # Alpine clang injects -lssp_nonshared; stub only needed on Alpine
+    if [ -f /etc/alpine-release ]; then
+        check_file "glibc ${arch}: libssp_nonshared.a (stub)" "$sr/usr/lib/libssp_nonshared.a"
+    fi
     # Kernel UAPI headers
     check_dir  "glibc ${arch}: linux headers" "$sr/usr/include/linux"
     check_dir  "glibc ${arch}: asm headers" "$sr/usr/include/asm"
@@ -91,9 +103,16 @@ else
 fi
 
 # --- libc++ static libraries ---
+# On Alpine, x86_64-linux-musl libc++ is at /usr/lib/libc++.a (native sysroot /).
+# On Debian/Ubuntu, it's at /usr/x86_64-linux-musl/usr/lib/libc++.a (cross sysroot).
+if [ -f /etc/alpine-release ]; then
+    MUSL_X86_LIBCXX="/usr/lib/libc++.a"
+else
+    MUSL_X86_LIBCXX="/usr/x86_64-linux-musl/usr/lib/libc++.a"
+fi
 for path in \
-    /usr/lib/libc++.a \
-    /usr/aarch64-alpine-linux-musl/usr/lib/libc++.a \
+    "$MUSL_X86_LIBCXX" \
+    /usr/aarch64-linux-musl/usr/lib/libc++.a \
     /usr/x86_64-linux-gnu/usr/lib/libc++.a \
     /usr/aarch64-linux-gnu/usr/lib/libc++.a \
     /usr/windows-gnu/x86_64/lib/libc++.a \

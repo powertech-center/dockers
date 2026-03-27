@@ -15,7 +15,6 @@ All images are published to `ghcr.io/powertech-center/`.
   - [alpine/rust](#alpinerust)
   - [alpine/nodejs](#alpinenodejs)
   - [alpine/mobile](#alpinemobile)
-  - [alpine/cross-platform](#alpinecross-platform)
   - [alpine/cross-clang](#alpinecross-clang)
   - [alpine/cross-csharp](#alpinecross-csharp)
   - [alpine/cross-go](#alpinecross-go)
@@ -33,16 +32,15 @@ alpine:latest
   └── alpine/tools              base utilities
         └── alpine/dev          build tools & scripting
               ├── alpine/clang      LLVM/Clang (native host)
+              │     └── alpine/cross-clang  cross-compilation: SDKs, sysroots, wrappers
+              │           ├── alpine/cross-csharp   .NET/C# NativeAOT (cross)
+              │           ├── alpine/cross-go       Go toolchain (cross)
+              │           └── alpine/cross-rust     Rust toolchain (cross)
               ├── alpine/csharp     .NET/C# (native host)
               ├── alpine/go         Go toolchain (native host)
               ├── alpine/rust       Rust toolchain (native host)
-              ├── alpine/nodejs     Node.js, TypeScript, JS/TS tooling
-              ├── alpine/mobile     Android SDK, Flutter, React Native
-              └── alpine/cross-platform  clang cross-compilers, macOS SDK, Windows SDKs
-                    ├── alpine/cross-clang    LLVM/Clang toolchain (cross)
-                    ├── alpine/cross-csharp   .NET/C# NativeAOT (cross)
-                    ├── alpine/cross-go       Go toolchain (cross)
-                    └── alpine/cross-rust     Rust toolchain (cross)
+              └── alpine/nodejs     Node.js, TypeScript, JS/TS tooling
+                    └── alpine/mobile     Android SDK, Flutter, React Native
 ```
 
 ## Images
@@ -187,15 +185,14 @@ npx react-native build-android --mode=release
 | `GRADLE_HOME` | `/opt/gradle` |
 | `FLUTTER_HOME` | `/opt/flutter` |
 
-### alpine/cross-platform
+### alpine/cross-clang
 
-Cross-compilation infrastructure for 10 targets (Linux musl + glibc, macOS, Windows MSVC + GNU, each x64/arm64).
+Cross-compilation environment for 10 targets (Linux musl + glibc, macOS, Windows MSVC + GNU, each x64/arm64).
+Inherits LLVM/Clang toolchain from `alpine/clang`. Adds SDKs, sysroots, compiler-rt builtins, static libc++ for all cross targets, and smart compiler/linker wrapper scripts.
 
 ```
-ghcr.io/powertech-center/alpine/cross-platform:latest
+ghcr.io/powertech-center/alpine/cross-clang:latest
 ```
-
-Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (static), compiler-rt, macOS SDK, Windows MSVC SDK (xwin), Windows GNU sysroot (llvm-mingw), smart compiler/linker wrapper scripts.
 
 **Smart wrappers** — compiler wrappers auto-detect compile vs link mode:
 - In compile-only mode (`-c`, `-S`, `-E`): pass args directly to clang
@@ -222,27 +219,11 @@ Adds: clang, lld, aarch64 musl sysroot, glibc sysroots (x64/arm64), libc++ (stat
 | Windows MSVC SDK & CRT (xwin) | `/usr/windows-msvc` |
 | Windows GNU sysroot (llvm-mingw) | `/usr/windows-gnu` |
 | macOS SDK | `/usr/macosx.sdk` |
-| aarch64 musl sysroot | `/usr/aarch64-alpine-linux-musl` |
+| x86_64 musl sysroot | `/usr/x86_64-linux-musl` (Debian/Ubuntu) or `/` (Alpine native) |
+| aarch64 musl sysroot | `/usr/aarch64-linux-musl` |
 | x86_64 glibc sysroot | `/usr/x86_64-linux-gnu` |
 | aarch64 glibc sysroot | `/usr/aarch64-linux-gnu` |
 | macOS SDK env var | `SDKROOT=/usr/macosx.sdk` |
-
-### alpine/cross-clang
-
-LLVM/Clang development and cross-compilation environment.
-
-```
-ghcr.io/powertech-center/alpine/cross-clang:latest
-```
-
-Inherits all 10-target cross-compilation infrastructure from alpine/cross-platform. Adds LLVM/Clang development libraries for C/C++ work:
-
-- `clang-dev` — libclang headers and libraries (for tools using libclang API)
-- `llvm-dev` — LLVM headers and libraries (for custom passes, LLVM-based tools)
-- `llvm-static` — static LLVM libraries
-- `compiler-rt` — runtime library (builtins, sanitizers, profiling)
-
-Use this image when developing C/C++ projects that need cross-compilation or when building LLVM-based tools.
 
 ### alpine/cross-csharp
 
@@ -260,7 +241,7 @@ NativeAOT cross-compiles C# to native binaries for 8 targets: Linux, macOS, and 
 # Linux (CppCompilerAndLinker + SysRoot)
 dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
   -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
-  -p:SysRoot=/usr/aarch64-alpine-linux-musl \
+  -p:SysRoot=/usr/aarch64-linux-musl \
   -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
 
 # macOS (CppCompilerAndLinker + SysRoot + DisableUnsupportedError)
@@ -281,7 +262,7 @@ dotnet publish -r win-x64 -p:PublishAot=true \
 | NativeAOT Target | RID | Compiler/Linker | SysRoot |
 |------------------|-----|-----------------|---------|
 | Linux x64 (musl) | `linux-musl-x64` | `clang-x86_64-linux-musl` | `/` |
-| Linux arm64 (musl) | `linux-musl-arm64` | `clang-aarch64-linux-musl` | `/usr/aarch64-alpine-linux-musl` |
+| Linux arm64 (musl) | `linux-musl-arm64` | `clang-aarch64-linux-musl` | `/usr/aarch64-linux-musl` |
 | Linux x64 (glibc) | `linux-x64` | `clang-x86_64-linux-gnu` | `/usr/x86_64-linux-gnu` |
 | Linux arm64 (glibc) | `linux-arm64` | `clang-aarch64-linux-gnu` | `/usr/aarch64-linux-gnu` |
 | macOS x64 | `osx-x64` | `clang-x86_64-apple-darwin` | `/usr/macosx.sdk` |
@@ -393,7 +374,7 @@ make build-alpine/cross-go
 make test
 
 # Run tests for a specific image
-make test-alpine/cross-platform
+make test-alpine/cross-clang
 
 # Push all images to ghcr.io
 make push

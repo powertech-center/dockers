@@ -81,9 +81,6 @@ nodejs:
 mobile:
   extends: .templates-job
 
-cross-platform:
-  extends: .templates-job
-
 cross-clang:
   extends: .templates-job
 
@@ -125,9 +122,6 @@ build-nodejs:
   extends: .build-job
 
 build-mobile:
-  extends: .build-job
-
-build-cross-platform:
   extends: .build-job
 
 build-cross-clang:
@@ -173,9 +167,6 @@ test-nodejs:
 test-mobile:
   extends: .test-job
 
-test-cross-platform:
-  extends: .test-job
-
 test-cross-clang:
   extends: .test-job
 
@@ -219,9 +210,6 @@ push-nodejs:
 push-mobile:
   extends: .push-job
 
-push-cross-platform:
-  extends: .push-job
-
 push-cross-clang:
   extends: .push-job
 
@@ -263,9 +251,6 @@ clean-nodejs:
   extends: .clean-job
 
 clean-mobile:
-  extends: .clean-job
-
-clean-cross-platform:
   extends: .clean-job
 
 clean-cross-clang:
