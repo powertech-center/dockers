@@ -1,4 +1,4 @@
-# PowerTech Alpine Rust
+# PowerTech {{ distro | capitalize }} Cross-Rust
 # Rust development and cross-compilation environment
 # 8 cargo cross-compilation targets: Linux musl/gnu, macOS, Windows MSVC (x64/arm64 each)
 #
