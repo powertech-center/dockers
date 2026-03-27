@@ -13,27 +13,17 @@
 
 FROM ghcr.io/powertech-center/{{ distro }}/cross-clang:latest
 
-# Install .NET SDK and NativeAOT dependencies
+# Install .NET SDK, dev tools, and pre-fetch NativeAOT ILC for all 8 cross targets
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp.sh apk
-
-ENV DOTNET_ROOT="/usr/share/dotnet"
-ENV DOTNET_CLI_HOME=/opt/dotnet-tools
-ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
-
-# Install .NET dev tools to global path (accessible to all users)
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/dev-tools-csharp.sh
-
-# Pre-fetch NativeAOT ILC runtime packages for all 8 cross-compilation targets.
-# This adds ~150 MB to the image but makes `dotnet publish -p:PublishAot=true`
-# work instantly for any target without downloading packages at build time.
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp-prefetch.sh \
+    sh /tmp/shared/csharp.sh apk \
         linux-musl-x64 linux-musl-arm64 \
         linux-x64 linux-arm64 \
         osx-x64 osx-arm64 \
         win-x64 win-arm64
+
+ENV DOTNET_ROOT="/usr/share/dotnet"
+ENV DOTNET_CLI_HOME=/opt/dotnet-tools
+ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 
 # =============================================================================
 # NativeAOT cross-compilation environment

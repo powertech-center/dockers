@@ -6,26 +6,16 @@
 
 FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
-# Install .NET SDK and NativeAOT dependencies
+# Install .NET SDK, dev tools, and pre-fetch NativeAOT ILC for host target
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp.sh {{ pkg }}
+{%- if distro == "alpine" %}
+    sh /tmp/shared/csharp.sh {{ pkg }} linux-musl-x64
+{%- else %}
+    sh /tmp/shared/csharp.sh {{ pkg }} linux-x64
+{%- endif %}
 
 ENV DOTNET_ROOT="/usr/share/dotnet"
 ENV DOTNET_CLI_HOME=/opt/dotnet-tools
 ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
-
-# Install .NET dev tools to global path (accessible to all users)
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/dev-tools-csharp.sh
-
-{% if distro == "alpine" -%}
-# Pre-fetch NativeAOT ILC runtime package for the host target.
-# Makes `dotnet publish -p:PublishAot=true` work without downloading at build time.
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp-prefetch.sh linux-musl-x64
-{%- elif distro == "debian" or distro == "ubuntu" -%}
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/csharp-prefetch.sh linux-x64
-{%- endif %}
 
 CMD ["/bin/sh"]
