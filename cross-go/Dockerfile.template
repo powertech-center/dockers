@@ -9,16 +9,12 @@
 
 FROM ghcr.io/powertech-center/{{ distro }}/cross-clang:latest
 
-# Install Go toolchain and set up GOPATH
+# Install Go toolchain, dev tools (gopls, dlv, etc.), and set up GOPATH
 RUN --mount=type=bind,source=shared,target=/tmp/shared \
     sh /tmp/shared/go.sh
 
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
 ENV GOPATH="/go"
-
-# Install Go dev tools (gopls, dlv, etc.) — accessible to all users
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/dev-tools-go.sh
 
 # =============================================================================
 # CGo cross-compilation environment variables
