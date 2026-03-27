@@ -1,11 +1,84 @@
 # PowerTech Clang (native)
 # LLVM/Clang development environment for native (host) compilation
 #
+# Provides everything needed for C/C++ development including IDE support:
+#   - clang/clang++ compiler + lld linker
+#   - clangd (LSP), clang-format, clang-tidy (IDE/code quality)
+#   - LLVM utilities (llvm-ar, llvm-nm, llvm-strip, llvm-objdump, ...)
+#   - compiler-rt (builtins, sanitizers, coverage)
+#   - static libc++, libc++abi, libunwind (for -static/-stdlib=libc++ builds)
+#
 # Image: ghcr.io/powertech-center/{{ distro }}/clang
 
 FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
-RUN --mount=type=bind,source=shared,target=/tmp/shared \
-    sh /tmp/shared/clang.sh {{ pkg }}
+{% if pkg == "apk" -%}
+# Alpine: install from distro packages (tracks latest stable Alpine release)
+RUN apk add --no-cache \
+        clang \
+        clang-extra-tools \
+        lld \
+        llvm \
+        llvm-dev \
+        compiler-rt \
+        libc++-dev \
+        libc++-static \
+        llvm-libunwind-static
 
+{% elif pkg == "deb" -%}
+# Debian/Ubuntu: install latest stable LLVM from apt.llvm.org
+# 1) Auto-detect latest stable LLVM major version from GitHub releases
+# 2) Auto-detect distro codename from /etc/os-release
+# 3) Add versioned apt.llvm.org repository and install packages
+RUN \
+    # ── Detect latest stable LLVM version ──
+    LLVM_MAJOR=$(wget -qO- "https://api.github.com/repos/llvm/llvm-project/releases" | \
+        jq -r '[.[] | select(.prerelease == false and (.tag_name | startswith("llvmorg-")))] | first | .tag_name | ltrimstr("llvmorg-") | split(".")[0]') && \
+    echo "=== Installing LLVM ${LLVM_MAJOR} from apt.llvm.org ===" && \
+    #
+    # ── Detect distro codename ──
+    . /etc/os-release && CODENAME=${VERSION_CODENAME} && \
+    echo "=== Distro: ${CODENAME} ===" && \
+    #
+    # ── Add apt.llvm.org repository ──
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/llvm.asc > /dev/null && \
+    echo "deb http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME}-${LLVM_MAJOR} main" \
+        > /etc/apt/sources.list.d/llvm.list && \
+    #
+    # ── Install packages ──
+    apt-get update && apt-get install -y --no-install-recommends \
+        clang-${LLVM_MAJOR} \
+        clangd-${LLVM_MAJOR} \
+        clang-format-${LLVM_MAJOR} \
+        clang-tidy-${LLVM_MAJOR} \
+        lld-${LLVM_MAJOR} \
+        llvm-${LLVM_MAJOR} \
+        llvm-${LLVM_MAJOR}-dev \
+        libclang-rt-${LLVM_MAJOR}-dev \
+        libc++-${LLVM_MAJOR}-dev \
+        libc++abi-${LLVM_MAJOR}-dev \
+        libunwind-${LLVM_MAJOR}-dev \
+        && rm -rf /var/lib/apt/lists/* && \
+    #
+    # ── Create unversioned symlinks ──
+    for cmd in \
+        clang clang++ clang-cpp clangd clang-format clang-tidy \
+        lld ld.lld ld64.lld lld-link wasm-ld \
+        llvm-ar llvm-nm llvm-objcopy llvm-objdump llvm-ranlib \
+        llvm-readelf llvm-readobj llvm-size llvm-strip \
+        llvm-strings llvm-symbolizer llvm-addr2line \
+        llvm-cov llvm-profdata llvm-config \
+        llvm-windres llvm-rc llvm-lib llvm-dlltool; \
+    do \
+        src="/usr/bin/${cmd}-${LLVM_MAJOR}"; \
+        [ -f "$src" ] && ln -sf "$src" "/usr/bin/${cmd}" || true; \
+    done && \
+    #
+    # ── Verify installation ──
+    echo "=== clang version ===" && \
+    clang --version && \
+    echo "=== clang resource dir ===" && \
+    clang --print-resource-dir
+
+{% endif -%}
 CMD ["/bin/sh"]

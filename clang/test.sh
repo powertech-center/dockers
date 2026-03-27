@@ -1,51 +1,68 @@
 #!/bin/sh
-# Tests for clang image — distro-independent
-set -e
+# test.sh — Test runner for clang image
+#
+# Usage:
+#   ./test.sh                # run all tests
+#   ./test.sh 01-tools       # run specific test
+#   ./test.sh --list         # list available tests
 
-PASS=0
-FAIL=0
+set -u
 
-check() {
-    desc="$1"; shift
-    if "$@" > /dev/null 2>&1; then
-        echo "  PASS  $desc"
-        PASS=$((PASS + 1))
-    else
-        echo "  FAIL  $desc"
-        FAIL=$((FAIL + 1))
-    fi
-}
+TESTDIR="$(cd "$(dirname "$0")/tests" && pwd)"
 
-echo "=== clang tests ==="
+tests_to_run=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --list)
+            echo "Available tests:"
+            for f in "$TESTDIR"/[0-9]*.sh; do
+                name=$(basename "$f" .sh)
+                desc=$(sed -n '2s/^# //p' "$f")
+                printf "  %-30s %s\n" "$name" "$desc"
+            done
+            exit 0 ;;
+        --help|-h)
+            echo "Usage: $0 [--list] [test-name ...]"
+            exit 0 ;;
+        *) tests_to_run="$tests_to_run $1" ;;
+    esac
+    shift
+done
 
-# -- Compilers --
-echo ""
-echo "--- Compilers ---"
-check "clang available"                clang --version
-check "clang++ available"              clang++ --version
+if [ -t 1 ]; then
+    BOLD='\033[1m' RESET='\033[0m' GREEN='\033[0;32m' RED='\033[0;31m'
+else
+    BOLD='' RESET='' GREEN='' RED=''
+fi
 
-# -- Linker --
-echo ""
-echo "--- Linker ---"
-check "ld.lld available"               ld.lld --version
+if [ -n "$tests_to_run" ]; then
+    test_files=""
+    for name in $tests_to_run; do
+        f="$TESTDIR/${name}.sh"
+        [ -f "$f" ] && test_files="$test_files $f" || { echo "error: test '$name' not found" >&2; exit 1; }
+    done
+else
+    test_files=$(ls "$TESTDIR"/[0-9]*.sh 2>/dev/null)
+fi
 
-# -- LLVM tools --
-echo ""
-echo "--- LLVM tools ---"
-check "llvm-ar available"              llvm-ar --version
-check "llvm-config available"          llvm-config --version
+[ -z "$test_files" ] && { echo "No tests found in $TESTDIR"; exit 1; }
 
-# -- LLVM development --
-echo ""
-echo "--- LLVM development ---"
-check "LLVM include dir exists"        test -d "$(llvm-config --includedir 2>/dev/null || echo /nonexistent)"
-check "LLVM lib dir exists"            test -d "$(llvm-config --libdir 2>/dev/null || echo /nonexistent)"
-check "compiler-rt installed"          test -d /usr/lib/clang -o -d /usr/lib/llvm/lib/clang
+total_suites=0 failed_suites=0 failed_names=""
+printf "${BOLD}Running Clang native environment tests${RESET}\n\n"
 
-# -- Summary --
-echo ""
-echo "=== Results: $PASS passed, $FAIL failed ==="
+for test_file in $test_files; do
+    name=$(basename "$test_file" .sh)
+    total_suites=$((total_suites + 1))
+    printf "%s--- %s ---%s\n" "$BOLD" "$name" "$RESET"
+    sh "$test_file"
+    [ $? -ne 0 ] && { failed_suites=$((failed_suites + 1)); failed_names="$failed_names $name"; }
+    echo ""
+done
 
-if [ "$FAIL" -gt 0 ]; then
-    exit 1
+echo "================================================================"
+if [ $failed_suites -eq 0 ]; then
+    printf "${GREEN}${BOLD}ALL %d test suites passed${RESET}\n" "$total_suites"; exit 0
+else
+    printf "${RED}${BOLD}%d of %d test suites FAILED:${RESET}\n" "$failed_suites" "$total_suites"
+    for name in $failed_names; do printf "  ${RED}%s${RESET}\n" "$name"; done; exit 1
 fi
