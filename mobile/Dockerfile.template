@@ -4,11 +4,8 @@
 # Image: ghcr.io/powertech-center/{{ distro }}/mobile
 #
 # Key design decisions:
-# - Inherits from nodejs (not dev) purely as a build optimization:
-#   React Native requires the full Node.js toolchain, so inheriting avoids
-#   duplicating ~100+ MB of identical layers. For the user, nodejs and
-#   mobile are independent peer images — do NOT reflect this dependency
-#   in README.md or public documentation.
+# - Inherits from nodejs: mobile development (React Native, Flutter web)
+#   requires the full Node.js toolchain, so mobile extends nodejs directly.
 # - Android SDK tools are glibc-linked binaries; Alpine uses musl
 # - gcompat + glibc dynamic linker provide the compatibility layer (Alpine only)
 # - JDK (latest LTS) — musl-native from repos (Alpine) or default-jdk (Debian/Ubuntu)
