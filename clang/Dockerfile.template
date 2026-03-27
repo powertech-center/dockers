@@ -19,11 +19,16 @@ RUN apk add --no-cache \
         clang-extra-tools \
         lld \
         llvm \
-        llvm-dev \
         compiler-rt \
         libc++-dev \
         libc++-static \
         llvm-libunwind-static
+
+# Utility symlinks:
+#   llvm-lib  — MSVC-compatible COFF archive tool (alias for llvm-ar -format=lib)
+#   strip     — point to llvm-strip (preferred over binutils strip for LLVM toolchain)
+RUN ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib && \
+    ln -sf llvm-strip /usr/bin/strip
 
 {% elif pkg == "deb" -%}
 # Debian/Ubuntu: install latest stable LLVM from apt.llvm.org
@@ -53,7 +58,6 @@ RUN \
         clang-tidy-${LLVM_MAJOR} \
         lld-${LLVM_MAJOR} \
         llvm-${LLVM_MAJOR} \
-        llvm-${LLVM_MAJOR}-dev \
         libclang-rt-${LLVM_MAJOR}-dev \
         libc++-${LLVM_MAJOR}-dev \
         libc++abi-${LLVM_MAJOR}-dev \
@@ -67,18 +71,36 @@ RUN \
         llvm-ar llvm-nm llvm-objcopy llvm-objdump llvm-ranlib \
         llvm-readelf llvm-readobj llvm-size llvm-strip \
         llvm-strings llvm-symbolizer llvm-addr2line \
-        llvm-cov llvm-profdata llvm-config \
+        llvm-cov llvm-profdata \
         llvm-windres llvm-rc llvm-lib llvm-dlltool; \
     do \
         src="/usr/bin/${cmd}-${LLVM_MAJOR}"; \
         [ -f "$src" ] && ln -sf "$src" "/usr/bin/${cmd}" || true; \
     done && \
     #
+    # ── Utility symlinks ──
+    # strip → llvm-strip (preferred over binutils strip for LLVM toolchain)
+    # llvm-lib fallback: if llvm-lib-N didn't exist, create alias for llvm-ar
+    [ ! -f /usr/bin/llvm-lib ] && ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib || true && \
+    ln -sf /usr/bin/llvm-strip /usr/bin/strip && \
+    #
+    # ── Fix libc++ header search for cross-compilation ──
+    # Debian/Ubuntu clang has libc++ headers in its install dir
+    # (/usr/lib/llvm-N/include/c++/v1), which takes priority over --sysroot.
+    # Move headers to /usr/include/c++/v1 so clang falls back to sysroot-relative
+    # search when cross-compiling, while keeping host compilation working.
+    LLVM_INC="/usr/lib/llvm-${LLVM_MAJOR}/include/c++" && \
+    if [ -d "$LLVM_INC/v1" ]; then \
+        rm -f /usr/include/c++/v1 && \
+        cp -a "$LLVM_INC/v1" /usr/include/c++/v1 && \
+        rm -rf "$LLVM_INC"; \
+    fi && \
+    #
     # ── Verify installation ──
     echo "=== clang version ===" && \
     clang --version && \
     echo "=== clang resource dir ===" && \
     clang --print-resource-dir
-
 {% endif -%}
+
 CMD ["/bin/sh"]
