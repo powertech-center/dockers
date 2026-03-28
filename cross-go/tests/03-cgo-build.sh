@@ -5,7 +5,10 @@
 
 echo "=== CGO cross-compilation ==="
 
-PROJECT="$SRCDIR/cgo_hello"
+# Copy project to isolated temp dir to avoid conflicts
+# when multiple distro containers run tests in parallel
+PROJECT="$WORKDIR/cgo_hello"
+cp -r "$SRCDIR/cgo_hello" "$PROJECT"
 
 # Build for each target
 for entry in $GO_TARGETS; do

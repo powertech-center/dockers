@@ -7,7 +7,11 @@
 
 echo "=== Rust cc crate cross-compilation ==="
 
-PROJECT="$SRCDIR/hello_c"
+# Copy project to isolated temp dir to avoid conflicts
+# when multiple distro containers run tests in parallel
+# (bind-mount shares the same host directory)
+PROJECT="$WORKDIR/hello_c"
+cp -r "$SRCDIR/hello_c" "$PROJECT"
 
 # Ensure cc crate is available (fetch dependencies once)
 if ! (cd "$PROJECT" && cargo fetch --quiet 2>/dev/null); then
