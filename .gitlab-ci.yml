@@ -50,6 +50,73 @@ push:
 clean:
   extends: .aggregates-job
 
+all:
+  extends: .aggregates-job
+
+hierarchy:
+  extends: .aggregates-job
+  script:
+    - |
+      $registry = "ghcr.io/powertech-center"
+      $distros  = @("alpine", "debian", "ubuntu")
+
+      # template => (indent, description)
+      $templates = [ordered]@{
+        "tools"        = @(0, "Base utilities: bash, git, wget, curl, jq, tar, zip, 7z")
+        "dev"          = @(1, "Build tools: make, cmake, gcc, python3, pwsh")
+        "clang"        = @(2, "LLVM/Clang native toolchain")
+        "cross-clang"  = @(3, "Cross-compilation: 10 targets, SDKs, sysroots")
+        "cross-csharp" = @(4, ".NET NativeAOT cross-compilation (8 targets)")
+        "cross-go"     = @(4, "Go CGO cross-compilation (6 targets)")
+        "cross-rust"   = @(4, "Rust cross-compilation (8 targets)")
+        "csharp"       = @(2, ".NET SDK, NativeAOT (native host)")
+        "go"           = @(2, "Go toolchain (native host)")
+        "rust"         = @(2, "Rust toolchain (native host)")
+        "nodejs"       = @(2, "Node.js LTS, TypeScript, npm, yarn, pnpm")
+        "mobile"       = @(3, "Android SDK, Flutter, React Native")
+      }
+
+      # Build lookup table: "repo" => "size string" from docker images
+      $sizeMap = @{}
+      docker images --format '{{.Repository}}\t{{.Size}}' | ForEach-Object {
+        $parts = $_ -split '\t'
+        if ($parts.Count -eq 2) { $sizeMap[$parts[0]] = $parts[1] }
+      }
+
+      function Get-ImageSize($distro, $template) {
+        $image = "$registry/$distro/$template"
+        $raw = $sizeMap[$image]
+        if (-not $raw) { return '—' }
+        # docker images returns e.g. "57.3MB", "1.98GB" — normalize to "57 MB", "2.0 GB"
+        if ($raw -match '^([\d.]+)(MB|GB)$') {
+          $num  = [double]$Matches[1]
+          $unit = $Matches[2]
+          if ($unit -eq 'MB') {
+            return "{0} MB" -f [math]::Round($num)
+          } else {
+            return "{0:F1} GB" -f $num
+          }
+        }
+        return $raw
+      }
+
+      Write-Host ""
+      Write-Host "| Name | Alpine | Debian | Ubuntu | Description |"
+      Write-Host "|------|--------|--------|--------|-------------|"
+
+      foreach ($t in $templates.Keys) {
+        $indent = $templates[$t][0]
+        $desc   = $templates[$t][1]
+        $ensp   = "&ensp;&ensp;" * $indent
+        $name   = "${ensp}[$t](#$t)"
+        $sizes  = @()
+        foreach ($d in $distros) {
+          $sizes += Get-ImageSize $d $t
+        }
+        Write-Host "| $name | $($sizes[0]) | $($sizes[1]) | $($sizes[2]) | $desc |"
+      }
+      Write-Host ""
+
 # ===========================================================================
 # Templates — full cycle (build → test → push) per template
 # ===========================================================================
