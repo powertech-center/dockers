@@ -13,7 +13,13 @@ FROM ghcr.io/powertech-center/{{ distro }}/dev:latest
 
 # ── Node.js LTS ──────────────────────────────────────────────────────────────
 {% if pkg == "apk" -%}
-RUN apk add --no-cache nodejs npm
+RUN NODE_MAJOR=$(curl -fsSL https://nodejs.org/dist/index.json \
+       | python3 -c "import sys,json; vs=json.load(sys.stdin); print(next(v['version'].split('.')[0].lstrip('v') for v in vs if v.get('lts')))") \
+    && apk update \
+    && NODE_PACKAGE=nodejs-current \
+    && if apk list --available nodejs | grep -q "^nodejs-${NODE_MAJOR}\."; then NODE_PACKAGE=nodejs; fi \
+    && apk add --no-cache "${NODE_PACKAGE}~${NODE_MAJOR}" npm \
+    && rm -rf /var/cache/apk/*
 {%- elif pkg == "deb" -%}
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
     && mkdir -p /etc/apt/keyrings \
@@ -33,9 +39,9 @@ RUN npm install -g yarn pnpm
 
 # ── TypeScript & dev tools ───────────────────────────────────────────────────
 # typescript: compiler (tsc) for .ts → .js
-# ts-node: run .ts files directly without pre-compilation
+# tsx: run TypeScript directly; use tsc --noEmit separately for type checking
 # eslint: linter (standard in JS/TS ecosystem)
 # prettier: code formatter (standard in JS/TS ecosystem)
-RUN npm install -g typescript ts-node eslint prettier
+RUN npm install -g typescript tsx eslint prettier
 
 CMD ["/bin/sh"]

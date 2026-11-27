@@ -56,7 +56,13 @@ ENV CXX_x86_64_pc_windows_msvc=clang++-x86_64-windows-msvc
 ENV CC_aarch64_pc_windows_msvc=clang-aarch64-windows-msvc
 ENV CXX_aarch64_pc_windows_msvc=clang++-aarch64-windows-msvc
 
-# AR for Windows MSVC targets (llvm-lib produces COFF archives for lld-link)
+# Target archivers: Unix ar interface, MSVC lib interface.
+ENV AR_x86_64_unknown_linux_musl=llvm-ar
+ENV AR_aarch64_unknown_linux_musl=llvm-ar
+ENV AR_x86_64_unknown_linux_gnu=llvm-ar
+ENV AR_aarch64_unknown_linux_gnu=llvm-ar
+ENV AR_x86_64_apple_darwin=llvm-ar
+ENV AR_aarch64_apple_darwin=llvm-ar
 ENV AR_x86_64_pc_windows_msvc=llvm-lib
 ENV AR_aarch64_pc_windows_msvc=llvm-lib
 
@@ -70,8 +76,8 @@ ENV AR_aarch64_pc_windows_msvc=llvm-lib
 #   - Windows MSVC: rustc passes MSVC-style flags (/NOLOGO, /OPT:REF, /defaultlib:)
 #     → needs lld wrapper (lld -flavor link understands these natively)
 #
-# Linux gnu targets are for native development on glibc desktops (not cross-compilation),
-# so they also use clang wrappers but require a glibc sysroot to actually link.
+# Linux gnu targets use the glibc sysroots supplied by cross-clang,
+# independently of the host distro's libc.
 #
 # All clang/lld wrappers are defined in cross-clang.
 # =============================================================================
@@ -81,7 +87,7 @@ ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-x86_64-linux-musl
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=clang-aarch64-linux-musl
 
 # Linux gnu linkers (clang driver: translates -Wl, flags → lld)
-# NOTE: gnu targets require glibc sysroot — only usable on glibc-based hosts
+# glibc sysroots are inherited from cross-clang on all three distros.
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang-x86_64-linux-gnu
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=clang-aarch64-linux-gnu
 

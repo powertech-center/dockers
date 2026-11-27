@@ -7,7 +7,7 @@
 # - Inherits from nodejs: mobile development (React Native, Flutter web)
 #   requires the full Node.js toolchain, so mobile extends nodejs directly.
 # - Android SDK tools are glibc-linked binaries; Alpine uses musl
-# - gcompat + glibc dynamic linker provide the compatibility layer (Alpine only)
+# - gcompat supplies the glibc ABI on musl; Alpine OpenJDK runs Android CLI
 # - JDK (latest LTS) — musl-native from repos (Alpine) or default-jdk (Debian/Ubuntu)
 # - Flutter SDK requires glibc compat on Alpine (Dart runtime is glibc-linked)
 #
@@ -17,16 +17,12 @@
 FROM ghcr.io/powertech-center/{{ distro }}/nodejs:latest
 
 {% if distro == "alpine" -%}
-# ── glibc compatibility layer ──────────────────────────────────────────────────
+# ── glibc ABI compatibility on musl ────────────────────────────────────────────
 # Android SDK and Flutter/Dart binaries are linked against glibc.
 # gcompat provides a musl-to-glibc translation shim, but the binaries also need
-# the glibc dynamic linker (ld-linux-x86-64.so.2) to be present on disk.
-RUN apk add --no-cache gcompat libstdc++ && \
-    # Some Android SDK tools (e.g. aapt2) dlopen glibc's ld-linux directly.
-    # The gcompat package provides /lib/ld-linux-x86-64.so.2 on recent Alpine,
-    # but if missing we create a symlink to the gcompat loader.
-    [ -f /lib/ld-linux-x86-64.so.2 ] || \
-    ln -s /lib/ld-musl-x86_64.so.1 /lib/ld-linux-x86-64.so.2 2>/dev/null || true
+# gcompat loader at the interpreter path expected by these binaries.
+# This remains a musl environment; no glibc libc or JRE is installed.
+RUN apk add --no-cache gcompat libstdc++
 {%- endif %}
 
 # ── JDK (latest compatible LTS, auto-detected) ──────────────────────────────
@@ -86,22 +82,38 @@ RUN CMDLINE_ZIP=$(curl -fsSL "https://dl.google.com/android/repository/repositor
     unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools-tmp && \
     mv /tmp/cmdline-tools-tmp/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
     rm -rf /tmp/cmdline-tools.zip /tmp/cmdline-tools-tmp && \
-    # Accept licenses and install SDK components
-    yes | sdkmanager --licenses > /dev/null 2>&1 && \
-    PLATFORM_VERSION=$(sdkmanager --list 2>/dev/null | grep "platforms;android-" | \
-        grep -v "\-ext" | tail -1 | awk '{print $1}') && \
-    BUILD_TOOLS_VERSION=$(sdkmanager --list 2>/dev/null | grep "build-tools;" | \
-        tail -1 | awk '{print $1}') && \
-    NDK_VERSION=$(sdkmanager --list 2>/dev/null | grep "ndk;" | \
-        tail -1 | awk '{print $1}') && \
-    sdkmanager --install \
-        "cmdline-tools;latest" \
+{%- if distro == "alpine" %}
+    # Use Google's Java code with Alpine OpenJDK, omitting its bundled glibc JRE.
+    curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/android-cli -o /tmp/android-cli && \
+    7z x -tzip /tmp/android-cli main.jar 'lib/*' -o/opt/android-cli && \
+    rm /tmp/android-cli && \
+    # Preload musl's gcompat only for the JVM so Google's JNI helpers can run.
+    printf '%s\n' \
+        '#!/bin/sh' \
+        'export ANDROID_CLI=1' \
+        'export LD_PRELOAD="/lib/libgcompat.so.0${LD_PRELOAD:+:$LD_PRELOAD}"' \
+        'exec "${JAVA_HOME}/bin/java" --enable-native-access=ALL-UNNAMED \' \
+        '    -Dandroid.cli.dir="${ANDROID_USER_HOME:-$HOME/.android}/cli" \' \
+        '    -Dandroid.cli.exe="$0" -Djava.library.path=/opt/android-cli/lib \' \
+        '    -cp /opt/android-cli/main.jar com.android.cli.Android "$@"' \
+        > "${ANDROID_HOME}/cmdline-tools/latest/bin/android" && \
+    chmod +x "${ANDROID_HOME}/cmdline-tools/latest/bin/android" && \
+{%- endif %}
+    android --no-metrics sdk list --all > /tmp/android-packages.txt && \
+    PLATFORM_VERSION=$(awk '$1 ~ /^platforms\/android-[0-9]+$/ {print $1}' /tmp/android-packages.txt | sort -V | tail -1) && \
+    BUILD_TOOLS_VERSION=$(awk '$1 ~ /^build-tools\/[0-9.]+$/ {print $1}' /tmp/android-packages.txt | sort -V | tail -1) && \
+    NDK_VERSION=$(awk '$1 ~ /^ndk\/[0-9.]+$/ && $2 !~ /-/ {print $1}' /tmp/android-packages.txt | sort -V | tail -1) && \
+    test -n "${PLATFORM_VERSION}" && test -n "${BUILD_TOOLS_VERSION}" && test -n "${NDK_VERSION}" && \
+    android --no-metrics sdk install \
         "${PLATFORM_VERSION}" \
         "${BUILD_TOOLS_VERSION}" \
         "platform-tools" \
         "${NDK_VERSION}" && \
+    rm /tmp/android-packages.txt && \
     # Make SDK accessible to all users (root-owned, world-readable)
-    chmod -R a+rX ${ANDROID_HOME}
+    chmod -R a+rX ${ANDROID_HOME} && \
+    # Android CLI opens its metadata lock for writing even when listing packages.
+    chmod -R a+rwX ${ANDROID_HOME}/.sdk
 
 # ── Gradle (latest stable, auto-detected) ─────────────────────────────────────
 RUN GRADLE_VERSION=$(wget -qO- "https://services.gradle.org/versions/current" | jq -r '.version') && \

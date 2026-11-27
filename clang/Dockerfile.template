@@ -25,7 +25,7 @@ RUN apk add --no-cache \
         llvm-libunwind-static
 
 # Utility symlinks:
-#   llvm-lib  — MSVC-compatible COFF archive tool (alias for llvm-ar -format=lib)
+#   llvm-lib  — MSVC archive interface (llvm-ar selects it by executable name)
 #   strip     — point to llvm-strip (preferred over binutils strip for LLVM toolchain)
 RUN ln -sf /usr/bin/llvm-ar /usr/local/bin/llvm-lib && \
     ln -sf llvm-strip /usr/bin/strip
@@ -68,11 +68,13 @@ RUN \
     for cmd in \
         clang clang++ clang-cpp clangd clang-format clang-tidy \
         lld ld.lld ld64.lld lld-link wasm-ld \
-        llvm-ar llvm-nm llvm-objcopy llvm-objdump llvm-ranlib \
+        llvm-ar llvm-nm llvm-objcopy llvm-objdump llvm-ranlib llvm-cxxfilt \
         llvm-readelf llvm-readobj llvm-size llvm-strip \
         llvm-strings llvm-symbolizer llvm-addr2line \
         llvm-cov llvm-profdata \
-        llvm-windres llvm-rc llvm-lib llvm-dlltool; \
+        llvm-windres llvm-rc llvm-lib llvm-dlltool \
+        llvm-cvtres llvm-mt llvm-ml llvm-libtool-darwin llvm-lipo \
+        llvm-otool llvm-install-name-tool dsymutil; \
     do \
         src="/usr/bin/${cmd}-${LLVM_MAJOR}"; \
         [ -f "$src" ] && ln -sf "$src" "/usr/bin/${cmd}" || true; \

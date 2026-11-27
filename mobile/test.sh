@@ -40,6 +40,8 @@ echo "--- Android SDK ---"
 check "ANDROID_HOME set"         test -n "$ANDROID_HOME"
 check "ANDROID_HOME exists"      test -d "$ANDROID_HOME"
 check "sdkmanager available"     sdkmanager --version
+check "Android CLI available"    android --version
+check "SDK repository accessible" android --no-metrics sdk list --all 'platform-tools'
 check "adb available"            adb version
 check "platform-tools installed" test -d "$ANDROID_HOME/platform-tools"
 check "build-tools installed"    test -d "$ANDROID_HOME/build-tools"
@@ -72,6 +74,8 @@ check "FLUTTER_HOME exists"     test -d "$FLUTTER_HOME"
 echo ""
 echo "--- Multi-user access ---"
 check "Android SDK readable by dev"   su dev -c "test -r ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+check "Android CLI runs as dev"       su dev -c "android --no-metrics --version"
+check "SDK repository accessible as dev" su dev -c "android --no-metrics sdk list --all platform-tools"
 check "Flutter SDK readable by dev"   su dev -c "test -r ${FLUTTER_HOME}/bin/flutter"
 check "Gradle readable by dev"        su dev -c "test -r /opt/gradle/bin/gradle"
 check "flutter runs as dev"           su dev -c "flutter --version"

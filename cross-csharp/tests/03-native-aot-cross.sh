@@ -24,12 +24,11 @@ for entry in $AOT_TARGETS; do
     output="$WORKDIR/aot_${rid}"
 
     # Platform-specific MSBuild properties:
-    # - Linux: LinkerFlavor=lld (NativeAOT defaults to -fuse-ld=bfd which is x64-only)
+    # LinkerFlavor and ObjCopyName come from the image defaults.
     # - macOS: DisableUnsupportedError (cross-OS policy gate), StripSymbols=false
     extra_props=""
     case "$rid" in
-        linux-*) extra_props="-p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy" ;;
-        osx-*)   extra_props="-p:DisableUnsupportedError=true -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy" ;;
+        osx-*)   extra_props="-p:DisableUnsupportedError=true -p:StripSymbols=false" ;;
     esac
 
     stderr=$(cd "$PROJECT" && \
@@ -70,20 +69,19 @@ done
 # --- Windows targets (Windows.targets: CppLinker + lld-link style flags) ---
 for entry in $AOT_WINDOWS_TARGETS; do
     rid=$(echo "$entry" | cut -d: -f1)
-    linker=$(echo "$entry" | cut -d: -f2)
+    arch=$(echo "$entry" | cut -d: -f3)
 
     if [ -n "$TARGET_FILTER" ]; then
         case "$rid" in *"$TARGET_FILTER"*) ;; *) continue ;; esac
     fi
 
-    desc="NativeAOT publish -r $rid (linker=$linker)"
+    desc="NativeAOT publish -r $rid (Windows toolchain PATH)"
     output="$WORKDIR/aot_${rid}"
 
     stderr=$(cd "$PROJECT" && \
-        dotnet publish -r "$rid" \
+        PATH="/opt/toolchains/windows-${arch}/bin:$PATH" dotnet publish -r "$rid" \
             -p:PublishAot=true \
             -p:DisableUnsupportedError=true \
-            -p:CppLinker="$linker" \
             -p:IlcUseEnvironmentalTools=true \
             -p:StripSymbols=false \
             -p:EnableSourceLink=false \

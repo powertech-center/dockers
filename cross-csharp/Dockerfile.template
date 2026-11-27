@@ -34,20 +34,18 @@ ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 # Linux targets use MSBuild Unix.targets (CppCompilerAndLinker + SysRoot):
 #   dotnet publish -r <rid> -p:PublishAot=true \
 #     -p:CppCompilerAndLinker=<clang-wrapper> \
-#     -p:SysRoot=<sysroot> \
-#     -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+#     -p:SysRoot=<sysroot>
 #
 # macOS targets use MSBuild Unix.targets (CppCompilerAndLinker + SysRoot):
 #   dotnet publish -r <rid> -p:PublishAot=true \
 #     -p:DisableUnsupportedError=true \
 #     -p:CppCompilerAndLinker=<clang-wrapper> \
 #     -p:SysRoot=<sysroot> \
-#     -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
+#     -p:StripSymbols=false
 #
-# Windows targets use MSBuild Windows.targets (CppLinker = lld-link wrapper):
-#   dotnet publish -r <rid> -p:PublishAot=true \
+# Windows targets use MSBuild Windows.targets (target toolchain on PATH):
+#   PATH=/opt/toolchains/windows-<arch>/bin:$PATH dotnet publish -r <rid> -p:PublishAot=true \
 #     -p:DisableUnsupportedError=true \
-#     -p:CppLinker=<lld-wrapper> \
 #     -p:IlcUseEnvironmentalTools=true \
 #     -p:StripSymbols=false \
 #     -p:EnableSourceLink=false
@@ -57,31 +55,27 @@ ENV PATH="${PATH}:/opt/dotnet-tools/.dotnet/tools"
 #   # Linux arm64 musl
 #   dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
 #     -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
-#     -p:SysRoot=/usr/aarch64-linux-musl \
-#     -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+#     -p:SysRoot=/usr/aarch64-linux-musl
 #
 #   # macOS arm64
 #   dotnet publish -r osx-arm64 -p:PublishAot=true \
 #     -p:DisableUnsupportedError=true \
 #     -p:CppCompilerAndLinker=clang-aarch64-apple-darwin \
 #     -p:SysRoot=/usr/macosx.sdk \
-#     -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
+#     -p:StripSymbols=false
 #
 #   # Windows x64
-#   dotnet publish -r win-x64 -p:PublishAot=true \
+#   PATH=/opt/toolchains/windows-x86_64/bin:$PATH dotnet publish -r win-x64 -p:PublishAot=true \
 #     -p:DisableUnsupportedError=true \
-#     -p:CppLinker=lld-x86_64-windows-msvc \
 #     -p:IlcUseEnvironmentalTools=true \
 #     -p:StripSymbols=false -p:EnableSourceLink=false
 #
-# IMPORTANT: Always pass -p:LinkerFlavor=lld for cross-architecture Linux builds.
-# NativeAOT defaults to -fuse-ld=bfd which invokes the host ld.bfd — that only
-# supports x86_64. Our clang wrappers already use -fuse-ld=lld internally, but
-# NativeAOT injects -fuse-ld=bfd before our wrapper runs, overriding it.
-# LinkerFlavor=lld tells NativeAOT to pass -fuse-ld=lld instead.
+# The image defaults to LinkerFlavor=lld and ObjCopyName=llvm-objcopy.
+# Explicit MSBuild properties can override these defaults.
 # =============================================================================
 
-# Default ObjCopyName for all NativeAOT builds (Alpine ships GNU objcopy)
+# NativeAOT defaults for the LLVM toolchain
 ENV ObjCopyName=llvm-objcopy
+ENV LinkerFlavor=lld
 
 CMD ["/bin/sh"]

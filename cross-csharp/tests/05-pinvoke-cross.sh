@@ -27,8 +27,6 @@ for entry in $AOT_LINUX_TARGETS; do
             -p:PublishAot=true \
             -p:CppCompilerAndLinker="$compiler" \
             -p:SysRoot="$sysroot" \
-            -p:ObjCopyName=llvm-objcopy \
-            -p:LinkerFlavor=lld \
             -o "$output" \
             --nologo -v quiet 2>&1)
     rc=$?

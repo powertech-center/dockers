@@ -21,18 +21,18 @@ All images are published to `ghcr.io/powertech-center/`.
 
 | Name | Alpine | Debian | Ubuntu | Description |
 |------|--------|--------|--------|-------------|
-| [tools](#tools) | 38 MB | 201 MB | 170 MB | Base utilities: bash, git, wget, curl, jq, tar, zip, 7z |
-| &ensp;&ensp;[dev](#dev) | 754 MB | 1.2 GB | 1.1 GB | Build tools: make, cmake, gcc, python3, pwsh |
-| &ensp;&ensp;&ensp;&ensp;[clang](#clang) | 1.4 GB | 1.8 GB | 1.7 GB | LLVM/Clang native toolchain |
-| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-clang](#cross-clang) | 6.2 GB | 6.7 GB | 6.5 GB | Cross-compilation: 10 targets, SDKs, sysroots |
-| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-csharp](#cross-csharp) | 10.5 GB | 10.9 GB | 10.8 GB | .NET NativeAOT cross-compilation (8 targets) |
-| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-go](#cross-go) | 8.1 GB | 8.6 GB | 8.4 GB | Go CGO cross-compilation (6 targets) |
-| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-rust](#cross-rust) | 9.6 GB | 9.4 GB | 9.3 GB | Rust cross-compilation (8 targets) |
-| &ensp;&ensp;&ensp;&ensp;[csharp](#csharp) | 2.0 GB | 2.5 GB | 2.4 GB | .NET SDK, NativeAOT (native host) |
-| &ensp;&ensp;&ensp;&ensp;[go](#go) | 2.6 GB | 3.1 GB | 3.0 GB | Go toolchain (native host) |
-| &ensp;&ensp;&ensp;&ensp;[rust](#rust) | 2.5 GB | 2.8 GB | 2.7 GB | Rust toolchain (native host) |
-| &ensp;&ensp;&ensp;&ensp;[nodejs](#nodejs) | 949 MB | 1.6 GB | 1.5 GB | Node.js LTS, TypeScript, npm, yarn, pnpm |
-| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[mobile](#mobile) | 7.2 GB | 8.1 GB | 8.0 GB | Android SDK, Flutter, React Native |
+| [tools](#tools) | 38 MB | 202 MB | 214 MB | Base utilities: bash, git, wget, curl, jq, tar, zip, 7z |
+| &ensp;&ensp;[dev](#dev) | 749 MB | 1.2 GB | 1.2 GB | Build tools: make, cmake, gcc, python3, pwsh |
+| &ensp;&ensp;&ensp;&ensp;[clang](#clang) | 1.3 GB | 1.8 GB | 1.8 GB | LLVM/Clang native toolchain |
+| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-clang](#cross-clang) | 6.2 GB | 6.7 GB | 6.7 GB | Cross-compilation: 10 targets, SDKs, sysroots |
+| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-csharp](#cross-csharp) | 10.4 GB | 11.0 GB | 10.9 GB | .NET NativeAOT cross-compilation (8 targets) |
+| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-go](#cross-go) | 8.1 GB | 8.6 GB | 8.6 GB | Go CGO cross-compilation (6 targets) |
+| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[cross-rust](#cross-rust) | 9.7 GB | 9.8 GB | 9.7 GB | Rust cross-compilation (8 targets) |
+| &ensp;&ensp;&ensp;&ensp;[csharp](#csharp) | 1.9 GB | 2.4 GB | 2.4 GB | .NET SDK, NativeAOT (native host) |
+| &ensp;&ensp;&ensp;&ensp;[go](#go) | 2.7 GB | 3.2 GB | 3.1 GB | Go toolchain (native host) |
+| &ensp;&ensp;&ensp;&ensp;[rust](#rust) | 2.6 GB | 3.0 GB | 2.9 GB | Rust toolchain (native host) |
+| &ensp;&ensp;&ensp;&ensp;[nodejs](#nodejs) | 1.1 GB | 1.7 GB | 1.7 GB | Node.js LTS, TypeScript, npm, yarn, pnpm |
+| &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;[mobile](#mobile) | 7.5 GB | 8.6 GB | 8.6 GB | Android SDK, Flutter, React Native |
 
 ## Images
 
@@ -124,7 +124,7 @@ Universal JavaScript/TypeScript development environment. Inherits from [dev](#de
 ghcr.io/powertech-center/<distro>/nodejs:latest
 ```
 
-Adds: Node.js LTS, npm, yarn, pnpm, TypeScript, ts-node, ESLint, Prettier.
+Adds: Node.js LTS, npm, yarn, pnpm, TypeScript, tsx, ESLint, Prettier.
 
 Native npm modules (node-gyp) compile out of the box — gcc, g++, make, python3 are inherited from dev.
 
@@ -136,12 +136,14 @@ npx tsc --build
 npm test
 
 # Run .ts files directly
-ts-node src/index.ts
+tsx src/index.ts
 
 # Lint & format
 eslint src/
 prettier --write src/
 ```
+
+`tsx` runs TypeScript without type checking; use `tsc --noEmit` to check types.
 
 ### mobile
 
@@ -192,7 +194,11 @@ npx react-native build-android --mode=release
 ### cross-clang
 
 Cross-compilation environment for 10 targets (Linux musl + glibc, macOS, Windows MSVC + GNU, each x64/arm64).
-Inherits LLVM/Clang toolchain from [clang](#clang). Adds SDKs, sysroots, compiler-rt builtins, static libc++ for all cross targets, and smart compiler/linker wrapper scripts.
+Inherits LLVM/Clang toolchain from [clang](#clang). Adds SDKs, sysroots, compiler-rt builtins, static libc++ for Linux and Windows GNU, and compiler/linker wrapper scripts.
+
+Runtimes built here retain each target's default CPU baseline and tuning. Set CPU flags in your project when you need a newer instruction set.
+
+Wide atomic fallbacks use static compiler-rt. Sharing these objects across independently linked modules requires a common atomic runtime.
 
 ```
 ghcr.io/powertech-center/<distro>/cross-clang:latest
@@ -200,7 +206,9 @@ ghcr.io/powertech-center/<distro>/cross-clang:latest
 
 **Smart wrappers** — compiler wrappers auto-detect compile vs link mode:
 - In compile-only mode (`-c`, `-S`, `-E`): pass args directly to clang
-- In link mode: auto-inject `-fuse-ld=lld` for the correct linker
+- Clang configuration files supply target defaults, including LLD and its target-specific search directory (`-B`)
+- Clang handles compile/link modes and `@file.rsp` arguments directly
+- An explicit `--ld-path=...` or a different `-fuse-ld=...` overrides the default linker (MSVC: `-fuse-ld=...`)
 - No `CGO_LDFLAGS` or manual linker configuration needed in Makefiles
 
 **Clang cross-compilers** — C/C++ wrappers for all targets:
@@ -229,6 +237,10 @@ ghcr.io/powertech-center/<distro>/cross-clang:latest
 | aarch64 glibc sysroot | `/usr/aarch64-linux-gnu` |
 | macOS SDK env var | `SDKROOT=/usr/macosx.sdk` |
 
+Windows MSVC builds can use `lib` as a compatibility alias for `llvm-lib`, including build systems that invoke the Microsoft archiver by name.
+
+`CC`/`CXX` default to Clang; `cc`/`c++` also invoke Clang. Standard `ar`, `ranlib`, `nm`, `objcopy`, `objdump`, `strip`, `readelf`, `size`, `strings`, `addr2line`, and `c++filt` commands use LLVM tools. For MSVC-style builds, prepend `/opt/toolchains/windows-x86_64/bin` or `/opt/toolchains/windows-aarch64/bin` to `PATH`. These directories provide `cl`, `link`, `lib`, `rc`, `cvtres`, and `mt` (also with `.exe` names), configured for the selected architecture and Windows SDK. There is no global `cl` command.
+
 ### cross-csharp
 
 .NET/C# development and NativeAOT cross-compilation environment. Inherits from [cross-clang](#cross-clang).
@@ -245,20 +257,18 @@ NativeAOT cross-compiles C# to native binaries for 8 targets: Linux, macOS, and 
 # Linux (CppCompilerAndLinker + SysRoot)
 dotnet publish -r linux-musl-arm64 -p:PublishAot=true \
   -p:CppCompilerAndLinker=clang-aarch64-linux-musl \
-  -p:SysRoot=/usr/aarch64-linux-musl \
-  -p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
+  -p:SysRoot=/usr/aarch64-linux-musl
 
 # macOS (CppCompilerAndLinker + SysRoot + DisableUnsupportedError)
 dotnet publish -r osx-arm64 -p:PublishAot=true \
   -p:DisableUnsupportedError=true \
   -p:CppCompilerAndLinker=clang-aarch64-apple-darwin \
   -p:SysRoot=/usr/macosx.sdk \
-  -p:StripSymbols=false -p:ObjCopyName=llvm-objcopy
+  -p:StripSymbols=false
 
-# Windows (CppLinker = lld-link wrapper, MSVC-style linking)
-dotnet publish -r win-x64 -p:PublishAot=true \
+# Windows (MSVC-compatible tools selected through PATH)
+PATH=/opt/toolchains/windows-x86_64/bin:$PATH dotnet publish -r win-x64 -p:PublishAot=true \
   -p:DisableUnsupportedError=true \
-  -p:CppLinker=lld-x86_64-windows-msvc \
   -p:IlcUseEnvironmentalTools=true \
   -p:StripSymbols=false -p:EnableSourceLink=false
 ```
@@ -275,9 +285,9 @@ dotnet publish -r win-x64 -p:PublishAot=true \
 | Windows arm64 | `win-arm64` | `lld-aarch64-windows-msvc` | (built into wrapper) |
 
 **Notes**:
-- Always pass `-p:LinkerFlavor=lld` for cross-architecture Linux builds. NativeAOT defaults to `-fuse-ld=bfd` which only supports x86_64.
+- The image defaults to `LinkerFlavor=lld` and `ObjCopyName=llvm-objcopy`; these can be overridden with MSBuild properties.
 - macOS and Windows targets require `-p:DisableUnsupportedError=true` (cross-OS NativeAOT is blocked by MSBuild policy, not by technical limitations — ILC generates COFF/Mach-O natively via LLVM).
-- Windows targets use `CppLinker` (not `CppCompilerAndLinker`) because NativeAOT's Windows.targets passes MSVC-style flags (`/OUT:`, `/SUBSYSTEM:`) directly to the linker.
+- Windows targets pass MSVC-style flags directly to `link`; the selected toolchain directory provides the matching LLD wrapper. `CppLinker` can also be set explicitly.
 
 ### cross-go
 
@@ -370,14 +380,13 @@ The repository uses a `Makefile` with dynamically generated targets. Every image
 
 ### Target naming convention
 
-All targets follow the pattern `<action>-<distro>/<image>`:
+Build, test, and push targets follow the pattern `<action>-<distro>/<image>`:
 
 | Action | Description | Example |
 |--------|-------------|---------|
 | `build` | Build a Docker image | `make build-alpine/go` |
 | `test` | Run tests for an image | `make test-debian/cross-clang` |
 | `push` | Push an image to ghcr.io | `make push-ubuntu/dev` |
-| `clean` | Remove a local image | `make clean-alpine/tools` |
 
 ### Aggregate targets
 
@@ -387,7 +396,7 @@ Targets can be combined by distro, by image, or globally:
 |-------|-------|------|------|-------|
 | **Everything** | `make build` | `make test` | `make push` | `make clean` |
 | **One distro** | `make build-alpine` | `make test-debian` | `make push-ubuntu` | `make clean-alpine` |
-| **One image** | `make build-go` | `make test-cross-clang` | `make push-csharp` | `make clean-rust` |
+| **One image** | `make build-go` | `make test-cross-clang` | `make push-csharp` | — |
 
 ### Full cycle (build + test + push)
 
@@ -399,7 +408,13 @@ Targets can be combined by distro, by image, or globally:
 
 ### Dependency resolution
 
-Build dependencies are resolved automatically. For example, `make build-alpine/cross-go` will first build `alpine/tools`, then `alpine/dev`, `alpine/clang`, and `alpine/cross-clang` if they don't exist yet.
+Builds cascade through parent images: `make build-alpine/cross-go` builds `tools` → `dev` → `clang` → `cross-clang` → `cross-go`. Docker reuses cached layers where possible.
+
+### Cleanup
+
+`make clean-alpine` (or `clean-debian`, `clean-ubuntu`) removes local project images for that distro, skipping images that were not built. Cleanup is distro-wide because a single build can also create several parent images. There are no per-image clean targets; `make clean` cleans all three distros sequentially.
+
+Every distro cleanup also removes all unused build cache from the shared Docker builder, including other projects' cache.
 
 ## Using in Projects
 
@@ -430,7 +445,7 @@ The project follows a **latest stable / LTS** policy:
 | .NET SDK | latest LTS | distro packages |
 | Go | latest stable | auto via `go.dev/VERSION` |
 | Rust | latest stable | auto via rustup |
-| Node.js | latest LTS | distro packages |
+| Node.js | latest LTS | official LTS index + distro packages |
 | TypeScript | latest stable | via npm |
 | PowerShell | latest stable | auto via GitHub API |
 | OpenJDK | latest compatible LTS | distro packages + Gradle compatibility |

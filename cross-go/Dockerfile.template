@@ -2,7 +2,7 @@
 # Go development and cross-compilation environment
 # 6 CGO cross-compilation targets: Linux musl, macOS, Windows GNU (x64/arm64 each)
 #
-# Smart compiler wrappers auto-inject -fuse-ld=lld when linking is detected.
+# Target wrappers provide Clang and LLD defaults via Clang configuration files.
 # No CGO_LDFLAGS needed — just set CC=clang-<arch>-<os>.
 #
 # Image: ghcr.io/powertech-center/{{ distro }}/cross-go

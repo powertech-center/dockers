@@ -56,6 +56,9 @@ check_env CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER "lld-x86_64-windows-msvc" "
 check_env CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER "lld-aarch64-windows-msvc" "LINKER for aarch64-pc-windows-msvc"
 
 # AR for MSVC
+for target in x86_64_unknown_linux_musl aarch64_unknown_linux_musl x86_64_unknown_linux_gnu aarch64_unknown_linux_gnu x86_64_apple_darwin aarch64_apple_darwin; do
+    check_env "AR_${target}" "llvm-ar" "AR for ${target}"
+done
 check_env AR_x86_64_pc_windows_msvc "llvm-lib" "AR for x86_64-pc-windows-msvc"
 check_env AR_aarch64_pc_windows_msvc "llvm-lib" "AR for aarch64-pc-windows-msvc"
 

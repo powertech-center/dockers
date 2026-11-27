@@ -1,12 +1,13 @@
 # PowerTech Docker Images — GitLab CI/CD
 #
 # Every job runs `make <job-name> -j8` on the VPS (tag: linux).
-# All jobs are manual and have no inter-stage dependencies.
+# Jobs are manual except release in scheduled pipelines; no inter-stage dependencies.
 #
 # GHCR auth: set CI/CD variables GHCR_USER and GHCR_TOKEN
 # (Settings → CI/CD → Variables, masked + protected).
 
 stages:
+  - Release
   - Aggregates
   - Templates
   - Build
@@ -22,14 +23,54 @@ stages:
     - linux
   when: manual
   needs: []
-  cache:
-    key: dockers-cache
-    paths:
-      - .cache
+  variables:
+    MAKE_JOBS: "8"
   before_script:
     - echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
   script:
-    - make $CI_JOB_NAME -j8
+    - |
+      if (Test-Path .warnings) { Remove-Item -Recurse -Force .warnings }
+      $PSNativeCommandUseErrorActionPreference = $false
+      make $CI_JOB_NAME -j $env:MAKE_JOBS
+      $makeExit = $LASTEXITCODE
+      $warnings = @()
+      if (Test-Path .warnings) {
+        $warnings = @(Get-ChildItem -LiteralPath .warnings -Filter '*.txt' -File | Sort-Object Name)
+      }
+      foreach ($warning in $warnings) {
+        Get-Content -LiteralPath $warning.FullName
+      }
+      if ($makeExit -ne 0) { exit $makeExit }
+      if ($warnings.Count -gt 0) { exit 1 }
+  artifacts:
+    when: always
+    paths:
+      - .warnings/
+
+# ===========================================================================
+# Release — internal CI/CD cycles
+# ===========================================================================
+.release-job:
+  extends: .job
+  stage: Release
+
+release-alpine:
+  extends: .release-job
+
+release-debian:
+  extends: .release-job
+
+release-ubuntu:
+  extends: .release-job
+
+release:
+  extends: .release-job
+  timeout: 3 hours
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+    - when: manual
+      allow_failure: true
 
 # ===========================================================================
 # Aggregates
@@ -52,70 +93,6 @@ clean:
 
 all:
   extends: .aggregates-job
-
-hierarchy:
-  extends: .aggregates-job
-  script:
-    - |
-      $registry = "ghcr.io/powertech-center"
-      $distros  = @("alpine", "debian", "ubuntu")
-
-      # template => (indent, description)
-      $templates = [ordered]@{
-        "tools"        = @(0, "Base utilities: bash, git, wget, curl, jq, tar, zip, 7z")
-        "dev"          = @(1, "Build tools: make, cmake, gcc, python3, pwsh")
-        "clang"        = @(2, "LLVM/Clang native toolchain")
-        "cross-clang"  = @(3, "Cross-compilation: 10 targets, SDKs, sysroots")
-        "cross-csharp" = @(4, ".NET NativeAOT cross-compilation (8 targets)")
-        "cross-go"     = @(4, "Go CGO cross-compilation (6 targets)")
-        "cross-rust"   = @(4, "Rust cross-compilation (8 targets)")
-        "csharp"       = @(2, ".NET SDK, NativeAOT (native host)")
-        "go"           = @(2, "Go toolchain (native host)")
-        "rust"         = @(2, "Rust toolchain (native host)")
-        "nodejs"       = @(2, "Node.js LTS, TypeScript, npm, yarn, pnpm")
-        "mobile"       = @(3, "Android SDK, Flutter, React Native")
-      }
-
-      # Build lookup table: "repo" => "size string" from docker images
-      $sizeMap = @{}
-      docker images --format '{{.Repository}}\t{{.Size}}' | ForEach-Object {
-        $parts = $_ -split '\t'
-        if ($parts.Count -eq 2) { $sizeMap[$parts[0]] = $parts[1] }
-      }
-
-      function Get-ImageSize($distro, $template) {
-        $image = "$registry/$distro/$template"
-        $raw = $sizeMap[$image]
-        if (-not $raw) { return '—' }
-        # docker images returns e.g. "57.3MB", "1.98GB" — normalize to "57 MB", "2.0 GB"
-        if ($raw -match '^([\d.]+)(MB|GB)$') {
-          $num  = [double]$Matches[1]
-          $unit = $Matches[2]
-          if ($unit -eq 'MB') {
-            return "{0} MB" -f [math]::Round($num)
-          } else {
-            return "{0:F1} GB" -f $num
-          }
-        }
-        return $raw
-      }
-
-      Write-Host ""
-      Write-Host "| Name | Alpine | Debian | Ubuntu | Description |"
-      Write-Host "|------|--------|--------|--------|-------------|"
-
-      foreach ($t in $templates.Keys) {
-        $indent = $templates[$t][0]
-        $desc   = $templates[$t][1]
-        $ensp   = "&ensp;&ensp;" * $indent
-        $name   = "${ensp}[$t](#$t)"
-        $sizes  = @()
-        foreach ($d in $distros) {
-          $sizes += Get-ImageSize $d $t
-        }
-        Write-Host "| $name | $($sizes[0]) | $($sizes[1]) | $($sizes[2]) | $desc |"
-      }
-      Write-Host ""
 
 # ===========================================================================
 # Templates — full cycle (build → test → push) per template
@@ -166,6 +143,15 @@ cross-csharp:
 .build-job:
   extends: .job
   stage: Build
+
+build-alpine:
+  extends: .build-job
+
+build-debian:
+  extends: .build-job
+
+build-ubuntu:
+  extends: .build-job
 
 build-tools:
   extends: .build-job
@@ -296,38 +282,11 @@ push-cross-csharp:
   extends: .job
   stage: Clean
 
-clean-tools:
+clean-alpine:
   extends: .clean-job
 
-clean-dev:
+clean-debian:
   extends: .clean-job
 
-clean-clang:
-  extends: .clean-job
-
-clean-go:
-  extends: .clean-job
-
-clean-rust:
-  extends: .clean-job
-
-clean-csharp:
-  extends: .clean-job
-
-clean-nodejs:
-  extends: .clean-job
-
-clean-mobile:
-  extends: .clean-job
-
-clean-cross-clang:
-  extends: .clean-job
-
-clean-cross-go:
-  extends: .clean-job
-
-clean-cross-rust:
-  extends: .clean-job
-
-clean-cross-csharp:
+clean-ubuntu:
   extends: .clean-job
